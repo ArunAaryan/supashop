@@ -10,6 +10,7 @@ import {
 } from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
 import { createGuestRoutes } from "./modules/guest/guest-routes";
+import { createStoreRoutes } from "./modules/store/store-routes";
 
 export function createApp() {
 	const app = new Hono<AppEnv>();
@@ -27,6 +28,7 @@ export function createApp() {
 	app.route("/api/guest", createGuestRoutes());
 
 	app.use("/api/*", sessionMiddleware);
+	app.route("/api", createStoreRoutes());
 	app.get("/api/session", (c) =>
 		c.json({ user: c.get("user"), session: publicSession(c.get("session")), cmsRole: c.get("cmsRole") }),
 	);

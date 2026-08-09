@@ -3,6 +3,7 @@ import type { cmsRoleValues } from "../db/schema/access";
 export type CmsRole = (typeof cmsRoleValues)[number];
 
 export type Permission =
+	| "store:read"
 	| "store:update"
 	| "team:update"
 	| "catalog:write"
@@ -12,6 +13,7 @@ export type Permission =
 	| "analytics:read";
 
 const allPermissions = [
+	"store:read",
 	"store:update",
 	"team:update",
 	"catalog:write",
@@ -24,7 +26,7 @@ const allPermissions = [
 export const permissionsByRole: Record<CmsRole, readonly Permission[]> = {
 	owner: allPermissions,
 	admin: allPermissions.filter((permission) => permission !== "team:update"),
-	operations: ["catalog:write", "inventory:write", "order:manage", "analytics:read"],
+	operations: ["store:read", "catalog:write", "inventory:write", "order:manage", "analytics:read"],
 	delivery: ["delivery:complete"],
 };
 
