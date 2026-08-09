@@ -1,7 +1,13 @@
 import { Hono } from "hono";
 
 import { createAuth } from "./auth/create-auth";
-import { requirePermission, requireUser, sessionMiddleware, type AppEnv } from "./auth/session";
+import {
+	publicSession,
+	requirePermission,
+	requireUser,
+	sessionMiddleware,
+	type AppEnv,
+} from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
 
 export function createApp() {
@@ -20,7 +26,7 @@ export function createApp() {
 
 	app.use("/api/*", sessionMiddleware);
 	app.get("/api/session", (c) =>
-		c.json({ user: c.get("user"), session: c.get("session"), cmsRole: c.get("cmsRole") }),
+		c.json({ user: c.get("user"), session: publicSession(c.get("session")), cmsRole: c.get("cmsRole") }),
 	);
 
 	app.get(

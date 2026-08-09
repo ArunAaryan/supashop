@@ -17,6 +17,13 @@ export type AppEnv = {
 	};
 };
 
+export type PublicSession = Pick<AuthSession, "expiresAt" | "id">;
+
+export function publicSession(session: AuthSession | null): PublicSession | null {
+	if (!session) return null;
+	return { id: session.id, expiresAt: session.expiresAt };
+}
+
 export const sessionMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
 	c.set("user", null);
 	c.set("session", null);
