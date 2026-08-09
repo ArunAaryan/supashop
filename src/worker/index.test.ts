@@ -8,10 +8,10 @@ declare module "cloudflare:workers" {
 }
 
 describe("Worker API", () => {
-	it("serves the current API response through workerd", async () => {
-		const response = await exports.default.fetch("http://example.com/api/");
+	it("serves the health response through workerd", async () => {
+		const response = await exports.default.fetch("http://example.com/api/health");
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ name: "Cloudflare" });
+		expect(await response.json()).toEqual({ status: "ok" });
 	});
 });
