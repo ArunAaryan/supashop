@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 const currentTimestampMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
@@ -75,6 +75,7 @@ export const account = sqliteTable(
 	},
 	(table) => [
 		uniqueIndex("account_provider_account_unique").on(table.providerId, table.accountId),
+		index("account_user_id_idx").on(table.userId),
 	],
 );
 

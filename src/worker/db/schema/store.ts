@@ -9,7 +9,7 @@ export const storeProfile = sqliteTable(
 		singletonKey: integer("singleton_key").primaryKey(),
 		name: text("name").notNull(),
 		description: text("description").default("").notNull(),
-		ownerUserId: text("owner_user_id").references(() => user.id),
+		ownerUserId: text("owner_user_id").references(() => user.id, { onDelete: "set null" }),
 		contactName: text("contact_name").default("").notNull(),
 		phone: text("phone").default("").notNull(),
 		email: text("email").default("").notNull(),

@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "09d6b3f5-e1ba-4018-91bc-2c34b0ac702c",
+  "id": "b5a063ce-8c29-4dad-b46e-73259044450b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "cms_role": {
@@ -91,13 +91,18 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "cms_role_role_check": {
+          "name": "cms_role_role_check",
+          "value": "\"cms_role\".\"role\" in ('owner', 'admin', 'operations', 'delivery')"
+        }
+      }
     },
     "account": {
       "name": "account",
@@ -204,6 +209,13 @@
             "account_id"
           ],
           "isUnique": true
+        },
+        "account_user_id_idx": {
+          "name": "account_user_id_idx",
+          "columns": [
+            "user_id"
+          ],
+          "isUnique": false
         }
       },
       "foreignKeys": {
@@ -736,7 +748,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

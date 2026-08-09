@@ -7,7 +7,8 @@ CREATE TABLE `cms_role` (
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
 	FOREIGN KEY (`user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE cascade,
-	FOREIGN KEY (`granted_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
+	FOREIGN KEY (`granted_by`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
+	CONSTRAINT "cms_role_role_check" CHECK("cms_role"."role" in ('owner', 'admin', 'operations', 'delivery'))
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `cms_role_user_unique` ON `cms_role` (`user_id`);--> statement-breakpoint
@@ -29,6 +30,7 @@ CREATE TABLE `account` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `account_provider_account_unique` ON `account` (`provider_id`,`account_id`);--> statement-breakpoint
+CREATE INDEX `account_user_id_idx` ON `account` (`user_id`);--> statement-breakpoint
 CREATE TABLE `session` (
 	`id` text PRIMARY KEY NOT NULL,
 	`expires_at` integer NOT NULL,
@@ -105,6 +107,6 @@ CREATE TABLE `store_profile` (
 	`version` integer DEFAULT 1 NOT NULL,
 	`created_at` integer NOT NULL,
 	`updated_at` integer NOT NULL,
-	FOREIGN KEY (`owner_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`owner_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE set null,
 	CONSTRAINT "store_profile_singleton_key_check" CHECK("store_profile"."singleton_key" = 1)
 );

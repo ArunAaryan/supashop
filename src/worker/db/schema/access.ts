@@ -1,4 +1,5 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
 
@@ -13,9 +14,15 @@ export const cmsRole = sqliteTable(
 			.references(() => user.id, { onDelete: "cascade" }),
 		role: text("role", { enum: cmsRoleValues }).notNull(),
 		active: integer("active", { mode: "boolean" }).default(true).notNull(),
-		grantedBy: text("granted_by").references(() => user.id),
+		grantedBy: text("granted_by").references(() => user.id, { onDelete: "set null" }),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
 	},
-	(table) => [uniqueIndex("cms_role_user_unique").on(table.userId)],
+	(table) => [
+		uniqueIndex("cms_role_user_unique").on(table.userId),
+		check(
+			"cms_role_role_check",
+			sql`${table.role} in ('owner', 'admin', 'operations', 'delivery')`,
+		),
+	],
 );
