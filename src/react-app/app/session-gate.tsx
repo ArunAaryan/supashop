@@ -40,3 +40,19 @@ export function CmsGate({ children }: PropsWithChildren) {
 	}
 	return <>{children}</>;
 }
+
+export function StoreSettingsGate({ children }: PropsWithChildren) {
+	const { data, isPending } = useSession();
+	if (isPending) return <SessionLoading />;
+	if (!data?.user) return <Navigate replace to="/login" />;
+	if (data.cmsRole !== "owner" && data.cmsRole !== "admin") {
+		return (
+			<section className="rounded-card border border-white/70 bg-surface p-7 shadow-float">
+				<p className="text-xs font-black uppercase tracking-[0.16em] text-action">CMS forbidden</p>
+				<h1 className="mt-3 text-2xl font-black tracking-tight">Store settings are restricted.</h1>
+				<p className="mt-2 max-w-lg text-sm leading-6 text-muted">Only store owners and administrators can change the customer-facing store profile.</p>
+			</section>
+		);
+	}
+	return <>{children}</>;
+}

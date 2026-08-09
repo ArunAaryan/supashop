@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { CmsGate, LoginGate, SessionGate } from "./session-gate";
+import { CmsGate, LoginGate, SessionGate, StoreSettingsGate } from "./session-gate";
 
 type SessionBody = { user: { id: string } | null; cmsRole: string | null };
 
@@ -58,6 +58,20 @@ describe("CMS guard", () => {
 		mockSession({ user: { id: "customer" }, cmsRole: null });
 		renderRoutes(<CmsGate><p>CMS destination</p></CmsGate>);
 		expect(await screen.findByText(/CMS access is required/i)).toBeInTheDocument();
+	});
+});
+
+describe("store settings guard", () => {
+	it.each(["operations", "delivery"])('shows explicit forbidden UI for the %s role', async (cmsRole) => {
+		mockSession({ user: { id: "staff" }, cmsRole });
+		renderRoutes(<StoreSettingsGate><p>Store settings</p></StoreSettingsGate>);
+		expect(await screen.findByText(/store settings are restricted/i)).toBeInTheDocument();
+	});
+
+	it.each(["owner", "admin"])('allows the %s role', async (cmsRole) => {
+		mockSession({ user: { id: "staff" }, cmsRole });
+		renderRoutes(<StoreSettingsGate><p>Store settings</p></StoreSettingsGate>);
+		expect(await screen.findByText("Store settings")).toBeInTheDocument();
 	});
 });
 

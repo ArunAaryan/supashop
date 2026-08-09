@@ -3,13 +3,14 @@ import type { InputHTMLAttributes } from "react";
 type FieldProps = InputHTMLAttributes<HTMLInputElement> & {
 	label: string;
 	error?: string;
+	wrapperClassName?: string;
 };
 
-export function Field({ error, id, label, className = "", ...props }: FieldProps) {
+export function Field({ error, id, label, className = "", wrapperClassName = "", ...props }: FieldProps) {
 	const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
 	const errorId = `${fieldId}-error`;
 	return (
-		<label className="grid gap-1.5 text-sm font-bold text-ink" htmlFor={fieldId}>
+		<label className={`grid gap-1.5 text-sm font-bold text-ink ${wrapperClassName}`} htmlFor={fieldId}>
 			{label}
 			<input
 				aria-describedby={error ? errorId : undefined}
