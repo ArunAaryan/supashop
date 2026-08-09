@@ -6,6 +6,7 @@ import { CustomerShell } from "./customer-shell";
 import { CmsGate, LoginGate, SessionGate } from "./session-gate";
 import { useSession } from "./session-client";
 import { LoginPage } from "../features/auth/login-page";
+import { guestSessionResponseSchema } from "../../shared/contracts/guest";
 
 function PhasePage({ title, description }: { title: string; description: string }) {
 	return (
@@ -26,13 +27,21 @@ function CmsArea() {
 	return <CmsGate><CmsShell role={data?.cmsRole ?? "delivery"}><Outlet /></CmsShell></CmsGate>;
 }
 
-function guestEntryUnavailable() {
-	return Promise.reject(new Error("Guest checkout will be available in the next delivery phase."));
+export async function createGuestSession() {
+	const response = await fetch("/api/guest/session", {
+		method: "POST",
+		credentials: "include",
+	});
+	if (!response.ok) throw new Error("We could not start a guest session. Please try again.");
+	const body: unknown = await response.json().catch(() => null);
+	if (!guestSessionResponseSchema.safeParse(body).success) {
+		throw new Error("We could not start a guest session. Please try again.");
+	}
 }
 
 export const router = createBrowserRouter([
 	{ path: "/", element: <SessionGate /> },
-	{ path: "/login", element: <LoginGate><LoginPage onGuest={guestEntryUnavailable} /></LoginGate> },
+	{ path: "/login", element: <LoginGate><LoginPage onGuest={createGuestSession} /></LoginGate> },
 	{
 		element: <CustomerArea />,
 		children: [

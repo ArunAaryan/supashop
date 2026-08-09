@@ -80,6 +80,26 @@ describe("LoginPage", () => {
 		expect(onGuest).toHaveBeenCalledOnce();
 	});
 
+	it("navigates to the shop after the injected guest session succeeds", async () => {
+		const user = userEvent.setup();
+		const onGuest = vi.fn().mockResolvedValue(undefined);
+
+		render(
+			<QueryClientProvider client={new QueryClient()}>
+				<MemoryRouter initialEntries={["/login"]}>
+					<Routes>
+						<Route path="/login" element={<LoginPage onGuest={onGuest} />} />
+						<Route path="/shop" element={<p>Shop destination</p>} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>,
+		);
+
+		await user.click(screen.getByRole("button", { name: /continue as guest/i }));
+
+		expect(await screen.findByText("Shop destination")).toBeInTheDocument();
+	});
+
 	it("refreshes a cached anonymous session before routing after successful sign-in", async () => {
 		const user = userEvent.setup();
 		const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

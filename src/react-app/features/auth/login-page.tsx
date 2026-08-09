@@ -59,6 +59,7 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 		setIsSubmitting(true);
 		try {
 			await onGuest();
+			navigate("/shop", { replace: true });
 		} catch (caughtError) {
 			setError(messageFrom(caughtError));
 		} finally {

@@ -9,6 +9,7 @@ import {
 	type AppEnv,
 } from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
+import { createGuestRoutes } from "./modules/guest/guest-routes";
 
 export function createApp() {
 	const app = new Hono<AppEnv>();
@@ -23,6 +24,7 @@ export function createApp() {
 
 	app.get("/api/health", (c) => c.json({ status: "ok" }));
 	app.on(["GET", "POST"], "/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw));
+	app.route("/api/guest", createGuestRoutes());
 
 	app.use("/api/*", sessionMiddleware);
 	app.get("/api/session", (c) =>
