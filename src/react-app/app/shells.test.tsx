@@ -10,6 +10,7 @@ describe("application shells", () => {
 		render(<MemoryRouter><CustomerShell><p>Shop</p></CustomerShell></MemoryRouter>);
 		expect(screen.getByRole("navigation", { name: /customer navigation/i })).toBeInTheDocument();
 		expect(screen.getByRole("link", { name: /account/i })).toHaveAttribute("href", "/account");
+		expect(screen.getByRole("navigation", { name: /customer navigation/i })).not.toHaveClass("overflow-x-hidden");
 	});
 
 	it("gives CMS users a desktop sidebar and delivery users a compact delivery nav", () => {

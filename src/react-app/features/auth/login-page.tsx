@@ -68,9 +68,9 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 	}
 
 	return (
-		<main className="grid min-h-screen place-items-center overflow-x-hidden bg-[radial-gradient(circle_at_10%_10%,#ffece4_0,transparent_30%),radial-gradient(circle_at_90%_90%,#f3a488_0,transparent_35%)] p-4 sm:p-8">
-			<section className="w-full max-w-md rounded-card border border-white/65 bg-surface p-6 shadow-float sm:p-9">
-				<p className="mb-3 inline-flex rounded-full bg-ink px-3 py-1 text-xs font-bold tracking-[0.16em] text-surface">SUPASHOP · DELIVERY</p>
+		<main className="grid min-h-screen w-full min-w-0 place-items-center bg-[radial-gradient(circle_at_10%_10%,#ffece4_0,transparent_30%),radial-gradient(circle_at_90%_90%,#f3a488_0,transparent_35%)] p-4 sm:p-8">
+			<section className="w-full min-w-0 max-w-md rounded-card border border-white/65 bg-surface p-6 shadow-float sm:p-9">
+				<p className="mb-3 inline-block max-w-full whitespace-normal break-words rounded-full bg-ink px-3 py-1 text-xs font-bold tracking-[0.16em] text-surface">SUPASHOP · DELIVERY</p>
 				<h1 className="text-3xl font-black tracking-tight sm:text-4xl">Welcome back.</h1>
 				<p className="mt-2 text-sm leading-6 text-muted">Fresh essentials, on the route to your door.</p>
 

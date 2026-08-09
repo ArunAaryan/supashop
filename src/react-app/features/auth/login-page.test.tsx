@@ -41,6 +41,14 @@ describe("LoginPage", () => {
 		expect(screen.getByRole("button", { name: /continue as guest/i })).toBeInTheDocument();
 	});
 
+	it("allows the login card and brand label to shrink on narrow screens", () => {
+		renderPage();
+
+		expect(screen.getByRole("main")).not.toHaveClass("overflow-x-hidden");
+		expect(screen.getByRole("heading", { name: /welcome/i }).closest("section")).toHaveClass("min-w-0");
+		expect(screen.getByText("SUPASHOP · DELIVERY")).toHaveClass("max-w-full", "whitespace-normal");
+	});
+
 	it("registers with email and password after switching modes", async () => {
 		const user = userEvent.setup();
 		signUpEmail.mockResolvedValueOnce({ data: { user: { id: "new-user" } }, error: null });

@@ -15,7 +15,7 @@ export function Field({ error, id, label, className = "", wrapperClassName = "",
 			<input
 				aria-describedby={error ? errorId : undefined}
 				aria-invalid={Boolean(error)}
-				className={`min-h-12 rounded-2xl border bg-surface px-4 text-base font-normal outline-none transition placeholder:text-muted/75 focus:border-action ${error ? "border-action" : "border-line"} ${className}`}
+				className={`min-h-12 w-full min-w-0 rounded-2xl border bg-surface px-4 text-base font-normal outline-none transition placeholder:text-muted/75 focus:border-action ${error ? "border-action" : "border-line"} ${className}`}
 				id={fieldId}
 				{...props}
 			/>
