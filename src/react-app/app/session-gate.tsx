@@ -15,6 +15,14 @@ export function SessionGate() {
 	return <Navigate replace to="/login" />;
 }
 
+export function LoginGate({ children }: PropsWithChildren) {
+	const { data, isPending } = useSession();
+	if (isPending) return <SessionLoading />;
+	if (data?.cmsRole) return <Navigate replace to="/cms" />;
+	if (data?.user) return <Navigate replace to="/shop" />;
+	return <>{children}</>;
+}
+
 export function CmsGate({ children }: PropsWithChildren) {
 	const { data, isPending } = useSession();
 	if (isPending) return <SessionLoading />;

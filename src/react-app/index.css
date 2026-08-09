@@ -23,6 +23,7 @@ body {
 	min-height: 100vh;
 	background: var(--color-canvas);
 	color: var(--color-ink);
+	font-family: "Avenir Next", Avenir, "Trebuchet MS", sans-serif;
 }
 
 button,

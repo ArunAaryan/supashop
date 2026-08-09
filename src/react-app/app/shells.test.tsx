@@ -15,6 +15,8 @@ describe("application shells", () => {
 	it("gives CMS users a desktop sidebar and delivery users a compact delivery nav", () => {
 		const { rerender } = render(<MemoryRouter><CmsShell role="owner"><p>CMS</p></CmsShell></MemoryRouter>);
 		expect(screen.getByRole("navigation", { name: /CMS navigation/i })).toBeInTheDocument();
+		expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute("href", "/cms/orders");
+		expect(screen.getByRole("link", { name: "Inventory" })).toHaveAttribute("href", "/cms/inventory");
 
 		rerender(<MemoryRouter><CmsShell role="delivery"><p>CMS</p></CmsShell></MemoryRouter>);
 		expect(screen.getByRole("navigation", { name: /delivery navigation/i })).toBeInTheDocument();

@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
-import { CmsGate, SessionGate } from "./session-gate";
+import { CmsGate, LoginGate, SessionGate } from "./session-gate";
 
 type SessionBody = { user: { id: string } | null; cmsRole: string | null };
 
@@ -58,5 +58,37 @@ describe("CMS guard", () => {
 		mockSession({ user: { id: "customer" }, cmsRole: null });
 		renderRoutes(<CmsGate><p>CMS destination</p></CmsGate>);
 		expect(await screen.findByText(/CMS access is required/i)).toBeInTheDocument();
+	});
+});
+
+describe("login gate", () => {
+	it("routes an already authenticated customer away from login", async () => {
+		mockSession({ user: { id: "customer" }, cmsRole: null });
+		render(
+			<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+				<MemoryRouter initialEntries={["/login"]}>
+					<Routes>
+						<Route path="/login" element={<LoginGate><p>Login form</p></LoginGate>} />
+						<Route path="/shop" element={<p>Shop destination</p>} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>,
+		);
+		expect(await screen.findByText("Shop destination")).toBeInTheDocument();
+	});
+
+	it("routes an already authenticated CMS user away from login", async () => {
+		mockSession({ user: { id: "staff" }, cmsRole: "owner" });
+		render(
+			<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+				<MemoryRouter initialEntries={["/login"]}>
+					<Routes>
+						<Route path="/login" element={<LoginGate><p>Login form</p></LoginGate>} />
+						<Route path="/cms" element={<p>CMS destination</p>} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>,
+		);
+		expect(await screen.findByText("CMS destination")).toBeInTheDocument();
 	});
 });

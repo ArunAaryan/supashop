@@ -8,7 +8,7 @@ export type SessionSnapshot = {
 	cmsRole: CmsRole | null;
 };
 
-async function getSession(): Promise<SessionSnapshot> {
+export async function getSession(): Promise<SessionSnapshot> {
 	const response = await fetch("/api/session", { credentials: "include" });
 	if (!response.ok) throw new Error("Unable to confirm your session");
 	return response.json() as Promise<SessionSnapshot>;

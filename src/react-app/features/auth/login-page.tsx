@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "../../components/button";
 import { Field } from "../../components/field";
 import { authClient } from "../../lib/auth-client";
+import { getSession } from "../../app/session-client";
 
 type LoginPageProps = {
 	onGuest: () => void | Promise<void>;
@@ -20,6 +22,7 @@ function messageFrom(error: unknown): string {
 
 export function LoginPage({ onGuest }: LoginPageProps) {
 	const navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const [mode, setMode] = useState<AuthMode>("sign-in");
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
@@ -41,6 +44,8 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 				setError(messageFrom(result.error));
 				return;
 			}
+			queryClient.removeQueries({ queryKey: ["session"] });
+			await queryClient.fetchQuery({ queryKey: ["session"], queryFn: getSession });
 			navigate("/", { replace: true });
 		} catch (caughtError) {
 			setError(messageFrom(caughtError));

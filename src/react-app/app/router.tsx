@@ -3,7 +3,7 @@ import { createBrowserRouter, Navigate, Outlet } from "react-router-dom";
 
 import { CmsShell } from "./cms-shell";
 import { CustomerShell } from "./customer-shell";
-import { CmsGate, SessionGate } from "./session-gate";
+import { CmsGate, LoginGate, SessionGate } from "./session-gate";
 import { useSession } from "./session-client";
 import { LoginPage } from "../features/auth/login-page";
 
@@ -32,7 +32,7 @@ function guestEntryUnavailable() {
 
 export const router = createBrowserRouter([
 	{ path: "/", element: <SessionGate /> },
-	{ path: "/login", element: <LoginPage onGuest={guestEntryUnavailable} /> },
+	{ path: "/login", element: <LoginGate><LoginPage onGuest={guestEntryUnavailable} /></LoginGate> },
 	{
 		element: <CustomerArea />,
 		children: [
@@ -44,6 +44,8 @@ export const router = createBrowserRouter([
 		element: <CmsArea />,
 		children: [
 			{ path: "/cms", element: <PhasePage title="Operations dashboard arriving soon." description="Orders, inventory, and daily delivery work will appear here in the next CMS phase." /> },
+			{ path: "/cms/orders", element: <PhasePage title="Order operations are staged." description="The live order queue will arrive in the next CMS phase." /> },
+			{ path: "/cms/inventory", element: <PhasePage title="Inventory tools are staged." description="Offering stock controls will arrive in the next CMS phase." /> },
 			{ path: "/cms/settings/store", element: <PhasePage title="Store settings are staged." description="The editable store profile follows in the settings phase." /> },
 		],
 	},

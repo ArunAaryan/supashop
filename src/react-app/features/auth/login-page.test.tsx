@@ -1,10 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
 import { LoginPage } from "./login-page";
+import { SessionGate } from "../../app/session-gate";
 
 const { signInEmail, signUpEmail } = vi.hoisted(() => ({
 	signInEmail: vi.fn(),
@@ -77,5 +78,32 @@ describe("LoginPage", () => {
 		await user.click(screen.getByRole("button", { name: /continue as guest/i }));
 
 		expect(onGuest).toHaveBeenCalledOnce();
+	});
+
+	it("refreshes a cached anonymous session before routing after successful sign-in", async () => {
+		const user = userEvent.setup();
+		const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+		client.setQueryData(["session"], { user: null, session: null, cmsRole: null });
+		signInEmail.mockResolvedValueOnce({ data: { user: { id: "customer" } }, error: null });
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ user: { id: "customer" }, session: { id: "session", expiresAt: "later" }, cmsRole: null }), { status: 200 })));
+
+		render(
+			<QueryClientProvider client={client}>
+				<MemoryRouter initialEntries={["/login"]}>
+					<Routes>
+						<Route path="/login" element={<LoginPage onGuest={vi.fn()} />} />
+						<Route path="/" element={<SessionGate />} />
+						<Route path="/shop" element={<p>Shop destination</p>} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>,
+		);
+
+		await user.type(screen.getByLabelText(/email/i), "customer@example.com");
+		await user.type(screen.getByLabelText(/^password/i), "correct horse battery staple");
+		await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+		expect(await screen.findByText("Shop destination")).toBeInTheDocument();
+		expect(fetch).toHaveBeenCalledWith("/api/session", { credentials: "include" });
 	});
 });
