@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-	--color-canvas: #f8d9cf;
-	--color-surface: #fbfbf8;
-	--color-ink: #1b1b1a;
-	--color-muted: #74736e;
-	--color-line: #e5e1da;
-	--color-action: #f36c45;
+	--color-canvas: #f2f8fb;
+	--color-surface: #ffffff;
+	--color-ink: #25343b;
+	--color-muted: #748289;
+	--color-line: #dfeaec;
+	--color-action: #c7e5f1;
+	--color-focus: #4f8194;
 	--radius-card: 1.25rem;
-	--shadow-float: 0 20px 45px rgb(104 52 37 / 18%);
+	--shadow-float: 0 20px 45px rgb(55 89 101 / 10%);
 }
 
 *,
@@ -34,6 +35,6 @@ textarea {
 }
 
 :focus-visible {
-	outline: 3px solid var(--color-action);
+	outline: 3px solid var(--color-focus);
 	outline-offset: 2px;
 }
