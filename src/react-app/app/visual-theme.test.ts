@@ -26,6 +26,6 @@ describe("Clear Ice visual theme", () => {
 		expect(themeCss).toContain("--color-action: #c7e5f1;");
 		expect(themeCss).toContain("--color-focus: #4f8194;");
 		expect(themeCss).toContain("--shadow-float: 0 20px 45px rgb(55 89 101 / 10%);");
-		expect(themeCss).toContain("outline: 3px solid var(--color-focus);");
+		expect(themeCss).toContain(":focus-visible {\n\toutline: 3px solid var(--color-focus);\n\toutline-offset: 2px;\n}");
 	});
 });
