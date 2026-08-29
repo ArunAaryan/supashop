@@ -12,8 +12,8 @@ import { guestSessionResponseSchema } from "../../shared/contracts/guest";
 function PhasePage({ title, description }: { title: string; description: string }) {
 	return (
 		<section className="rounded-card border border-white/70 bg-surface p-6 shadow-float sm:p-9">
-			<p className="text-xs font-black uppercase tracking-[0.16em] text-action">Phase one</p>
-			<h1 className="mt-3 text-3xl font-black tracking-tight">{title}</h1>
+			<p className="text-xs font-medium uppercase tracking-[0.16em] text-action">Phase one</p>
+			<h1 className="mt-3 text-3xl font-medium tracking-tight">{title}</h1>
 			<p className="mt-3 max-w-xl text-sm leading-6 text-muted">{description}</p>
 		</section>
 	);

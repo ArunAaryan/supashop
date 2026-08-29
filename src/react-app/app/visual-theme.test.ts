@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { dirname, extname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 function findReactAppRoot(start: string): string {
@@ -16,6 +16,19 @@ function findReactAppRoot(start: string): string {
 const reactAppRoot = findReactAppRoot(process.cwd());
 const themeCss = readFileSync(join(reactAppRoot, "index.css"), "utf8");
 
+function productionFiles(directory: string): string[] {
+	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+		const path = join(directory, entry.name);
+		if (entry.isDirectory()) return entry.name === "test" ? [] : productionFiles(path);
+		if (entry.name.includes(".test.")) return [];
+		return [".css", ".ts", ".tsx"].includes(extname(entry.name)) ? [path] : [];
+	});
+}
+
+const productionSource = productionFiles(reactAppRoot)
+	.map((path) => readFileSync(path, "utf8"))
+	.join("\n");
+
 describe("Clear Ice visual theme", () => {
 	it("defines the approved shared palette and focus treatment", () => {
 		expect(themeCss).toContain("--color-canvas: #f2f8fb;");
@@ -27,5 +40,9 @@ describe("Clear Ice visual theme", () => {
 		expect(themeCss).toContain("--color-focus: #4f8194;");
 		expect(themeCss).toContain("--shadow-float: 0 20px 45px rgb(55 89 101 / 10%);");
 		expect(themeCss).toContain(":focus-visible {\n\toutline: 3px solid var(--color-focus);\n\toutline-offset: 2px;\n}");
+	});
+
+	it("caps production typography at medium weight", () => {
+		expect(productionSource).not.toMatch(/\bfont-(?:bold|black)\b/);
 	});
 });

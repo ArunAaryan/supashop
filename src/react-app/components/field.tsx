@@ -10,7 +10,7 @@ export function Field({ error, id, label, className = "", wrapperClassName = "",
 	const fieldId = id ?? label.toLowerCase().replace(/\s+/g, "-");
 	const errorId = `${fieldId}-error`;
 	return (
-		<label className={`grid gap-1.5 text-sm font-bold text-ink ${wrapperClassName}`} htmlFor={fieldId}>
+		<label className={`grid gap-1.5 text-sm font-medium text-ink ${wrapperClassName}`} htmlFor={fieldId}>
 			{label}
 			<input
 				aria-describedby={error ? errorId : undefined}

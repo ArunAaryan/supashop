@@ -70,8 +70,8 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 	return (
 		<main className="grid min-h-screen w-full min-w-0 place-items-center bg-[radial-gradient(circle_at_10%_10%,#ffece4_0,transparent_30%),radial-gradient(circle_at_90%_90%,#f3a488_0,transparent_35%)] p-4 sm:p-8">
 			<section className="w-full min-w-0 max-w-md rounded-card border border-white/65 bg-surface p-6 shadow-float sm:p-9">
-				<p className="mb-3 inline-block max-w-full whitespace-normal break-words rounded-full bg-ink px-3 py-1 text-xs font-bold tracking-[0.16em] text-surface">SUPASHOP · DELIVERY</p>
-				<h1 className="text-3xl font-black tracking-tight sm:text-4xl">Welcome back.</h1>
+				<p className="mb-3 inline-block max-w-full whitespace-normal break-words rounded-full bg-ink px-3 py-1 text-xs font-medium tracking-[0.16em] text-surface">SUPASHOP · DELIVERY</p>
+				<h1 className="text-3xl font-medium tracking-tight sm:text-4xl">Welcome back.</h1>
 				<p className="mt-2 text-sm leading-6 text-muted">Fresh essentials, on the route to your door.</p>
 
 				<form className="mt-7 grid gap-4" onSubmit={submit}>
@@ -82,7 +82,7 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 					<Button disabled={isSubmitting} type="submit">{isSubmitting ? "Please wait…" : isRegistration ? "Create account" : "Sign in"}</Button>
 				</form>
 
-				<div className="my-6 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.12em] text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
+				<div className="my-6 flex items-center gap-3 text-xs font-medium uppercase tracking-[0.12em] text-muted"><span className="h-px flex-1 bg-line" />or<span className="h-px flex-1 bg-line" /></div>
 				<Button className="w-full" disabled={isSubmitting} onClick={() => void continueAsGuest()} type="button" variant="secondary">Continue as guest</Button>
 				<Button className="mt-4 w-full" onClick={() => { setMode(isRegistration ? "sign-in" : "sign-up"); setError(undefined); }} type="button" variant="quiet">
 					{isRegistration ? "Already have an account? Sign in" : "Create account"}

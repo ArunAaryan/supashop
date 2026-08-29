@@ -39,7 +39,7 @@ function errorsFor(error: unknown): Errors {
 
 function TextArea({ label, value, onChange, error, id }: { label: string; value: string; onChange: (value: string) => void; error?: string; id: string }) {
 	const errorId = `${id}-error`;
-	return <label className="grid gap-1.5 text-sm font-bold text-ink" htmlFor={id}>
+	return <label className="grid gap-1.5 text-sm font-medium text-ink" htmlFor={id}>
 		{label}
 		<textarea aria-describedby={error ? errorId : undefined} aria-invalid={Boolean(error)} className={`min-h-28 resize-y rounded-2xl border bg-surface px-4 py-3 font-normal outline-none transition placeholder:text-muted/75 focus:border-action motion-reduce:transition-none ${error ? "border-action" : "border-line"}`} id={id} onChange={(event) => onChange(event.target.value)} value={value} />
 		{error ? <span className="font-normal text-[#ae3f27]" id={errorId}>{error}</span> : null}
@@ -48,7 +48,7 @@ function TextArea({ label, value, onChange, error, id }: { label: string; value:
 
 function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
 	return <section className="rounded-card border border-white/70 bg-surface p-5 shadow-float sm:p-7">
-		<div className="border-b border-line pb-4"><h2 className="text-xl font-black tracking-tight">{title}</h2><p className="mt-1 text-sm leading-6 text-muted">{description}</p></div>
+		<div className="border-b border-line pb-4"><h2 className="text-xl font-medium tracking-tight">{title}</h2><p className="mt-1 text-sm leading-6 text-muted">{description}</p></div>
 		<div className="mt-5">{children}</div>
 	</section>;
 }
@@ -115,15 +115,15 @@ export function StoreSettingsPage() {
 		}
 	};
 
-	if (store.isError) return <section className="rounded-card bg-surface p-7 shadow-float"><h1 className="text-2xl font-black">Store settings could not load.</h1><p className="mt-2 text-sm text-muted">{store.error.message}</p><Button className="mt-5" onClick={() => void store.refetch()} variant="secondary">Retry</Button></section>;
-	if (store.isPending || !form) return <section aria-busy="true" className="rounded-card bg-surface p-7 shadow-float"><p className="font-bold">Loading store settings…</p></section>;
+	if (store.isError) return <section className="rounded-card bg-surface p-7 shadow-float"><h1 className="text-2xl font-medium">Store settings could not load.</h1><p className="mt-2 text-sm text-muted">{store.error.message}</p><Button className="mt-5" onClick={() => void store.refetch()} variant="secondary">Retry</Button></section>;
+	if (store.isPending || !form) return <section aria-busy="true" className="rounded-card bg-surface p-7 shadow-float"><p className="font-medium">Loading store settings…</p></section>;
 
 	return <form className="mx-auto max-w-6xl space-y-5 pb-28" noValidate onSubmit={submit}>
 		<header className="rounded-card bg-ink p-5 text-surface shadow-float sm:flex sm:items-end sm:justify-between sm:p-7">
-			<div><p className="text-xs font-black uppercase tracking-[0.16em] text-action">Store profile</p><h1 className="mt-2 text-3xl font-black tracking-tight">{store.data.configured ? "Keep your route board current." : "Set up your store."}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-surface/70">These details guide customers, checkout availability, and the delivery team.</p></div>
-			<p aria-live="polite" className="mt-4 text-sm font-bold text-surface/80 sm:mt-0">{save.isPending ? "Saving…" : notice === "Store settings saved." ? "Saved" : dirty ? "Unsaved changes" : "Up to date"}</p>
+			<div><p className="text-xs font-medium uppercase tracking-[0.16em] text-action">Store profile</p><h1 className="mt-2 text-3xl font-medium tracking-tight">{store.data.configured ? "Keep your route board current." : "Set up your store."}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-surface/70">These details guide customers, checkout availability, and the delivery team.</p></div>
+			<p aria-live="polite" className="mt-4 text-sm font-medium text-surface/80 sm:mt-0">{save.isPending ? "Saving…" : notice === "Store settings saved." ? "Saved" : dirty ? "Unsaved changes" : "Up to date"}</p>
 		</header>
-		{notice && (Object.keys(errors).length > 0 || save.isError) ? <p aria-live="assertive" className="rounded-2xl border border-[#e8a28f] bg-[#fff0ea] px-4 py-3 text-sm font-bold text-[#8e301d]">{errors[""] ?? notice}</p> : null}
+		{notice && (Object.keys(errors).length > 0 || save.isError) ? <p aria-live="assertive" className="rounded-2xl border border-[#e8a28f] bg-[#fff0ea] px-4 py-3 text-sm font-medium text-[#8e301d]">{errors[""] ?? notice}</p> : null}
 
 		<div className="grid gap-5 xl:grid-cols-2">
 			<Section description="The name and person customers see when they need help." title="Identity & contact">
@@ -137,13 +137,13 @@ export function StoreSettingsPage() {
 			</Section>
 			<Section description="Enter every postal code you serve. Press Enter or Add to create a chip." title="Serviceable postal codes">
 				<div className="flex gap-2"><input aria-label="Add serviceable postal code" className="min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 outline-none focus:border-action" onChange={(event) => setPostalCodeEntry(event.target.value.toUpperCase())} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addPostalCode(); } }} value={postalCodeEntry} /><Button onClick={addPostalCode} type="button" variant="secondary">Add</Button></div>
-				<div aria-label="Serviceable postal codes" className="mt-4 flex flex-wrap gap-2">{form.serviceablePostalCodes.map((code, index) => <span className={`inline-flex min-h-11 items-center gap-2 rounded-full py-1 pl-4 pr-1 text-sm font-bold ${errors[`serviceablePostalCodes.${index}`] ? "bg-[#fff0ea] text-[#8e301d] ring-2 ring-action" : "bg-[#fff0ea]"}`} key={`${code}-${index}`}>{code}<button aria-label={`Remove ${code}`} className="grid size-9 place-items-center rounded-full hover:bg-action" onClick={() => update("serviceablePostalCodes", form.serviceablePostalCodes.filter((_, itemIndex) => itemIndex !== index))} type="button">×</button></span>)}</div>
+				<div aria-label="Serviceable postal codes" className="mt-4 flex flex-wrap gap-2">{form.serviceablePostalCodes.map((code, index) => <span className={`inline-flex min-h-11 items-center gap-2 rounded-full py-1 pl-4 pr-1 text-sm font-medium ${errors[`serviceablePostalCodes.${index}`] ? "bg-[#fff0ea] text-[#8e301d] ring-2 ring-action" : "bg-[#fff0ea]"}`} key={`${code}-${index}`}>{code}<button aria-label={`Remove ${code}`} className="grid size-9 place-items-center rounded-full hover:bg-action" onClick={() => update("serviceablePostalCodes", form.serviceablePostalCodes.filter((_, itemIndex) => itemIndex !== index))} type="button">×</button></span>)}</div>
 				{postalCodeErrors.map(([path, message]) => <p className="mt-2 text-sm text-[#ae3f27]" id={`${path}-error`} key={path}>{message}</p>)}
 			</Section>
 		</div>
 
 		<Section description="Keep all seven days visible. Closed days use 00:00 for both times." title="Opening hours">
-			<div className="grid gap-3">{errors.hours ? <p className="text-sm text-[#ae3f27]">{errors.hours}</p> : null}{form.hours.map((hour, index) => <div className="grid gap-3 rounded-2xl border border-line p-3 sm:grid-cols-[9rem_1fr_1fr_auto] sm:items-end" key={hour.weekday}><p className="pb-3 text-sm font-black">{weekdays[hour.weekday]}</p><Field disabled={hour.closed} error={errors[`hours.${index}.opensMinute`]} label={`${weekdays[hour.weekday]} opens`} onChange={(event) => updateHour(index, (item) => ({ ...item, opensMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.opensMinute)} /><Field disabled={hour.closed} error={errors[`hours.${index}.closesMinute`]} label={`${weekdays[hour.weekday]} closes`} onChange={(event) => updateHour(index, (item) => ({ ...item, closesMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.closesMinute)} /><label className="flex min-h-12 items-center gap-2 text-sm font-bold"><input aria-label={`${weekdays[hour.weekday]} closed`} checked={hour.closed} className="size-5 accent-action" onChange={(event) => updateHour(index, (item) => ({ ...item, closed: event.target.checked, opensMinute: event.target.checked ? 0 : 540, closesMinute: event.target.checked ? 0 : 1020 }))} type="checkbox" />Closed</label>{errors[`hours.${index}`] ? <p className="text-sm text-[#ae3f27] sm:col-span-4">{errors[`hours.${index}`]}</p> : null}</div>)}</div>
+			<div className="grid gap-3">{errors.hours ? <p className="text-sm text-[#ae3f27]">{errors.hours}</p> : null}{form.hours.map((hour, index) => <div className="grid gap-3 rounded-2xl border border-line p-3 sm:grid-cols-[9rem_1fr_1fr_auto] sm:items-end" key={hour.weekday}><p className="pb-3 text-sm font-medium">{weekdays[hour.weekday]}</p><Field disabled={hour.closed} error={errors[`hours.${index}.opensMinute`]} label={`${weekdays[hour.weekday]} opens`} onChange={(event) => updateHour(index, (item) => ({ ...item, opensMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.opensMinute)} /><Field disabled={hour.closed} error={errors[`hours.${index}.closesMinute`]} label={`${weekdays[hour.weekday]} closes`} onChange={(event) => updateHour(index, (item) => ({ ...item, closesMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.closesMinute)} /><label className="flex min-h-12 items-center gap-2 text-sm font-medium"><input aria-label={`${weekdays[hour.weekday]} closed`} checked={hour.closed} className="size-5 accent-action" onChange={(event) => updateHour(index, (item) => ({ ...item, closed: event.target.checked, opensMinute: event.target.checked ? 0 : 540, closesMinute: event.target.checked ? 0 : 1020 }))} type="checkbox" />Closed</label>{errors[`hours.${index}`] ? <p className="text-sm text-[#ae3f27] sm:col-span-4">{errors[`hours.${index}`]}</p> : null}</div>)}</div>
 		</Section>
 		<Section description="Customers see this during checkout and in their delivery confirmation." title="Customer instructions"><TextArea error={errors.deliveryInstructions} id="customer-facing-delivery-instructions" label="Customer-facing delivery instructions" onChange={(value) => update("deliveryInstructions", value || null)} value={form.deliveryInstructions ?? ""} /></Section>
 		<div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/95 p-3 backdrop-blur md:left-60"><div className="mx-auto flex max-w-6xl justify-end"><Button disabled={save.isPending} type="submit">{save.isPending ? "Saving…" : "Save store settings"}</Button></div></div>
