@@ -1,7 +1,20 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const themeCss = readFileSync("src/react-app/index.css", "utf8");
+function findReactAppRoot(start: string): string {
+	let directory = resolve(start);
+	while (true) {
+		const candidate = join(directory, "src/react-app");
+		if (existsSync(join(candidate, "index.css"))) return candidate;
+		const parent = dirname(directory);
+		if (parent === directory) throw new Error("Could not locate src/react-app/index.css");
+		directory = parent;
+	}
+}
+
+const reactAppRoot = findReactAppRoot(process.cwd());
+const themeCss = readFileSync(join(reactAppRoot, "index.css"), "utf8");
 
 describe("Clear Ice visual theme", () => {
 	it("defines the approved shared palette and focus treatment", () => {
