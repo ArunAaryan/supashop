@@ -951,7 +951,7 @@ Expected: every command exits `0`; tests have no failures; the dry run reports v
 
 - [ ] **Step 6: Review the final diff**
 
-Run: `git status --short && git diff --check && git diff --stat 0872ac1..HEAD`
+Run: `git status --short && git diff --check && git diff --stat master...HEAD`
 
 Expected: only intended Phase 2 files are changed, no whitespace errors, and `.pnpm-store/` remains untracked and unstaged.
 
