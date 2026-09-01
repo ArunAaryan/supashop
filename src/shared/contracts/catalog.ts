@@ -85,6 +85,13 @@ type OfferingRules = WeightPair & {
 	discountValue: number;
 };
 
+type OfferingAvailability = {
+	stockQuantity: number;
+	lowStockThreshold: number;
+	inStock: boolean;
+	lowStock: boolean;
+};
+
 function validateWeightPair(value: WeightPair, context: z.RefinementCtx): void {
 	if ((value.weightValue === null) !== (value.weightUnit === null)) {
 		context.addIssue({
@@ -134,6 +141,26 @@ function validateOfferingRules(
 			code: "custom",
 			path: ["discountValue"],
 			message: error instanceof Error ? error.message : "Invalid discount",
+		});
+	}
+}
+
+function validateOfferingAvailability(
+	offering: OfferingAvailability,
+	context: z.RefinementCtx,
+): void {
+	if (offering.inStock !== (offering.stockQuantity > 0)) {
+		context.addIssue({
+			code: "custom",
+			path: ["inStock"],
+			message: "In-stock status must match stock quantity",
+		});
+	}
+	if (offering.lowStock !== (offering.stockQuantity <= offering.lowStockThreshold)) {
+		context.addIssue({
+			code: "custom",
+			path: ["lowStock"],
+			message: "Low-stock status must match stock quantity and threshold",
 		});
 	}
 }
@@ -208,6 +235,7 @@ export const offeringSchema = z
 	.strict()
 	.superRefine((offering, context) => {
 		validateOfferingRules(offering, context);
+		validateOfferingAvailability(offering, context);
 		try {
 			const price = calculateEffectivePrice(
 				offering.listPriceMinor,
@@ -258,10 +286,141 @@ const productSummaryShape = {
 	inStock: z.boolean(),
 };
 
+type ProductImageResponse = z.infer<typeof productImageSchema>;
+
+type ProductResponseAssociations = BaseWeightPair & {
+	id: string;
+	categoryId: string;
+	category: { id: string };
+	primaryImage: ProductImageResponse | null;
+};
+
+type ProductDetailAssociations = ProductResponseAssociations & {
+	images: ProductImageResponse[];
+	offerings: Array<{ productId: string }>;
+};
+
+function validateProductResponse(
+	product: ProductResponseAssociations,
+	context: z.RefinementCtx,
+): void {
+	validateBaseWeightPair(product, context);
+
+	if (product.category.id !== product.categoryId) {
+		context.addIssue({
+			code: "custom",
+			path: ["category", "id"],
+			message: "Category must belong to the product category ID",
+		});
+	}
+	if (product.primaryImage?.productId !== undefined && product.primaryImage.productId !== product.id) {
+		context.addIssue({
+			code: "custom",
+			path: ["primaryImage", "productId"],
+			message: "Primary image must belong to the product",
+		});
+	}
+	if (product.primaryImage !== null && product.primaryImage.displayOrder !== 0) {
+		context.addIssue({
+			code: "custom",
+			path: ["primaryImage", "displayOrder"],
+			message: "Primary image must have display order zero",
+		});
+	}
+}
+
+function productImagesMatch(
+	left: ProductImageResponse,
+	right: ProductImageResponse,
+): boolean {
+	return (
+		left.id === right.id &&
+		left.productId === right.productId &&
+		left.url === right.url &&
+		left.mimeType === right.mimeType &&
+		left.byteSize === right.byteSize &&
+		left.altText === right.altText &&
+		left.displayOrder === right.displayOrder &&
+		left.createdAt === right.createdAt
+	);
+}
+
+function validateProductDetailAssociations(
+	product: ProductDetailAssociations,
+	context: z.RefinementCtx,
+): void {
+	const imageIds = new Set<string>();
+	const displayOrders = new Set<number>();
+	for (const [index, image] of product.images.entries()) {
+		if (image.productId !== product.id) {
+			context.addIssue({
+				code: "custom",
+				path: ["images", index, "productId"],
+				message: "Image must belong to the product",
+			});
+		}
+		if (imageIds.has(image.id)) {
+			context.addIssue({
+				code: "custom",
+				path: ["images", index, "id"],
+				message: "Image IDs must be unique",
+			});
+		}
+		if (displayOrders.has(image.displayOrder)) {
+			context.addIssue({
+				code: "custom",
+				path: ["images", index, "displayOrder"],
+				message: "Image display orders must be unique",
+			});
+		}
+		imageIds.add(image.id);
+		displayOrders.add(image.displayOrder);
+	}
+
+	for (const [index, offering] of product.offerings.entries()) {
+		if (offering.productId !== product.id) {
+			context.addIssue({
+				code: "custom",
+				path: ["offerings", index, "productId"],
+				message: "Offering must belong to the product",
+			});
+		}
+	}
+
+	if (product.images.length === 0) {
+		if (product.primaryImage !== null) {
+			context.addIssue({
+				code: "custom",
+				path: ["primaryImage"],
+				message: "Primary image must be null when the gallery is empty",
+			});
+		}
+		return;
+	}
+
+	const orderZeroImage = product.images.find((image) => image.displayOrder === 0);
+	if (orderZeroImage === undefined) {
+		context.addIssue({
+			code: "custom",
+			path: ["images"],
+			message: "A non-empty gallery must contain an order-zero image",
+		});
+	} else if (
+		product.primaryImage === null ||
+		!productImagesMatch(product.primaryImage, orderZeroImage)
+	) {
+		context.addIssue({
+			code: "custom",
+			path: ["primaryImage"],
+			message: "Primary image must match the order-zero gallery image",
+		});
+	}
+}
+
 export const productSummarySchema = z
 	.object(productSummaryShape)
 	.strict()
-	.superRefine(validateBaseWeightPair);
+	.superRefine(validateProductResponse);
 
 export const productDetailSchema = z
 	.object({
@@ -271,7 +430,10 @@ export const productDetailSchema = z
 		offerings: z.array(offeringSchema),
 	})
 	.strict()
-	.superRefine(validateBaseWeightPair);
+	.superRefine((product, context) => {
+		validateProductResponse(product, context);
+		validateProductDetailAssociations(product, context);
+	});
 
 export const inventoryMovementSchema = z
 	.object({
