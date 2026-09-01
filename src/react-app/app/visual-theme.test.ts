@@ -45,4 +45,8 @@ describe("Clear Ice visual theme", () => {
 	it("caps production typography at medium weight", () => {
 		expect(productionSource).not.toMatch(/\bfont-(?:bold|black)\b/);
 	});
+
+	it("removes the previous warm brand literals from production UI", () => {
+		expect(productionSource).not.toMatch(/#(?:f8d9cf|fbfbf8|1b1b1a|74736e|e5e1da|f36c45|d95734|fff7f2|ffece4|f3a488|fff0eb|fff0ea|e8a28f)(?:\b|_)/i);
+	});
 });

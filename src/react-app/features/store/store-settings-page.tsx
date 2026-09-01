@@ -123,7 +123,7 @@ export function StoreSettingsPage() {
 			<div><p className="text-xs font-medium uppercase tracking-[0.16em] text-action">Store profile</p><h1 className="mt-2 text-3xl font-medium tracking-tight">{store.data.configured ? "Keep your route board current." : "Set up your store."}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-surface/70">These details guide customers, checkout availability, and the delivery team.</p></div>
 			<p aria-live="polite" className="mt-4 text-sm font-medium text-surface/80 sm:mt-0">{save.isPending ? "Saving…" : notice === "Store settings saved." ? "Saved" : dirty ? "Unsaved changes" : "Up to date"}</p>
 		</header>
-		{notice && (Object.keys(errors).length > 0 || save.isError) ? <p aria-live="assertive" className="rounded-2xl border border-[#e8a28f] bg-[#fff0ea] px-4 py-3 text-sm font-medium text-[#8e301d]">{errors[""] ?? notice}</p> : null}
+		{notice && (Object.keys(errors).length > 0 || save.isError) ? <p aria-live="assertive" className="rounded-2xl border border-[#e6b8b2] bg-[#fff5f4] px-4 py-3 text-sm font-medium text-[#8e301d]">{errors[""] ?? notice}</p> : null}
 
 		<div className="grid gap-5 xl:grid-cols-2">
 			<Section description="The name and person customers see when they need help." title="Identity & contact">
@@ -137,7 +137,7 @@ export function StoreSettingsPage() {
 			</Section>
 			<Section description="Enter every postal code you serve. Press Enter or Add to create a chip." title="Serviceable postal codes">
 				<div className="flex gap-2"><input aria-label="Add serviceable postal code" className="min-w-0 flex-1 rounded-2xl border border-line bg-surface px-4 outline-none focus:border-action" onChange={(event) => setPostalCodeEntry(event.target.value.toUpperCase())} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addPostalCode(); } }} value={postalCodeEntry} /><Button onClick={addPostalCode} type="button" variant="secondary">Add</Button></div>
-				<div aria-label="Serviceable postal codes" className="mt-4 flex flex-wrap gap-2">{form.serviceablePostalCodes.map((code, index) => <span className={`inline-flex min-h-11 items-center gap-2 rounded-full py-1 pl-4 pr-1 text-sm font-medium ${errors[`serviceablePostalCodes.${index}`] ? "bg-[#fff0ea] text-[#8e301d] ring-2 ring-action" : "bg-[#fff0ea]"}`} key={`${code}-${index}`}>{code}<button aria-label={`Remove ${code}`} className="grid size-9 place-items-center rounded-full hover:bg-action" onClick={() => update("serviceablePostalCodes", form.serviceablePostalCodes.filter((_, itemIndex) => itemIndex !== index))} type="button">×</button></span>)}</div>
+				<div aria-label="Serviceable postal codes" className="mt-4 flex flex-wrap gap-2">{form.serviceablePostalCodes.map((code, index) => <span className={`inline-flex min-h-11 items-center gap-2 rounded-full py-1 pl-4 pr-1 text-sm font-medium ${errors[`serviceablePostalCodes.${index}`] ? "bg-[#fff5f4] text-[#8e301d] ring-2 ring-focus" : "bg-action/45"}`} key={`${code}-${index}`}>{code}<button aria-label={`Remove ${code}`} className="grid size-9 place-items-center rounded-full hover:bg-action" onClick={() => update("serviceablePostalCodes", form.serviceablePostalCodes.filter((_, itemIndex) => itemIndex !== index))} type="button">×</button></span>)}</div>
 				{postalCodeErrors.map(([path, message]) => <p className="mt-2 text-sm text-[#ae3f27]" id={`${path}-error`} key={path}>{message}</p>)}
 			</Section>
 		</div>

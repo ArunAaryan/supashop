@@ -7,8 +7,8 @@ type ButtonProps = PropsWithChildren<
 >;
 
 const variants = {
-	primary: "bg-action text-ink shadow-[0_8px_0_#d95734] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#d95734]",
-	secondary: "bg-surface text-ink border border-line hover:bg-[#fff7f2]",
+	primary: "bg-action text-ink shadow-[0_8px_0_#a5d2e2] hover:-translate-y-0.5 active:translate-y-1 active:shadow-[0_3px_0_#a5d2e2]",
+	secondary: "bg-surface text-ink border border-line hover:bg-[#f7fbfd]",
 	quiet: "bg-transparent text-ink underline-offset-4 hover:underline",
 } as const;
 
