@@ -6,6 +6,10 @@ import type { CmsRole } from "./session-client";
 const cmsLinks = [
 	{ label: "Overview", to: "/cms" },
 	{ label: "Orders", to: "/cms/orders" },
+	{ label: "Products", to: "/cms/products" },
+	{ label: "Categories", to: "/cms/categories" },
+	{ label: "Tags", to: "/cms/tags" },
+	{ label: "Offerings", to: "/cms/offerings" },
 	{ label: "Inventory", to: "/cms/inventory" },
 	{ label: "Store settings", to: "/cms/settings/store" },
 ];

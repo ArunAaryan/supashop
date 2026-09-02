@@ -13,13 +13,21 @@ describe("application shells", () => {
 		expect(screen.getByRole("navigation", { name: /customer navigation/i })).not.toHaveClass("overflow-x-hidden");
 	});
 
-	it("gives CMS users a desktop sidebar and delivery users a compact delivery nav", () => {
-		const { rerender } = render(<MemoryRouter><CmsShell role="owner"><p>CMS</p></CmsShell></MemoryRouter>);
+	it.each(["owner", "admin", "operations"] as const)("exposes Phase 2 catalog navigation to %s", (role) => {
+		render(<MemoryRouter><CmsShell role={role}><p>CMS</p></CmsShell></MemoryRouter>);
 		expect(screen.getByRole("navigation", { name: /CMS navigation/i })).toBeInTheDocument();
-		expect(screen.getByRole("link", { name: "Orders" })).toHaveAttribute("href", "/cms/orders");
+		expect(screen.getByRole("link", { name: "Products" })).toHaveAttribute("href", "/cms/products");
+		expect(screen.getByRole("link", { name: "Categories" })).toHaveAttribute("href", "/cms/categories");
+		expect(screen.getByRole("link", { name: "Tags" })).toHaveAttribute("href", "/cms/tags");
+		expect(screen.getByRole("link", { name: "Offerings" })).toHaveAttribute("href", "/cms/offerings");
 		expect(screen.getByRole("link", { name: "Inventory" })).toHaveAttribute("href", "/cms/inventory");
+	});
 
-		rerender(<MemoryRouter><CmsShell role="delivery"><p>CMS</p></CmsShell></MemoryRouter>);
+	it("keeps the delivery navigation compact and excludes Phase 2 catalog links", () => {
+		render(<MemoryRouter><CmsShell role="delivery"><p>CMS</p></CmsShell></MemoryRouter>);
 		expect(screen.getByRole("navigation", { name: /delivery navigation/i })).toBeInTheDocument();
+		for (const label of ["Products", "Categories", "Tags", "Offerings", "Inventory"]) {
+			expect(screen.queryByRole("link", { name: label })).not.toBeInTheDocument();
+		}
 	});
 });

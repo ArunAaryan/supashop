@@ -6,6 +6,12 @@ import { CustomerShell } from "./customer-shell";
 import { CmsGate, LoginGate, SessionGate, StoreSettingsGate } from "./session-gate";
 import { useSession } from "./session-client";
 import { LoginPage } from "../features/auth/login-page";
+import { CategoriesPage, TagsPage } from "../features/catalog/taxonomy-pages";
+import { ProductsPage } from "../features/catalog/products-page";
+import { ProductForm } from "../features/catalog/product-form";
+import { OfferingForm } from "../features/catalog/offering-form";
+import { OfferingsPage } from "../features/catalog/offerings-page";
+import { InventoryMovementsPage } from "../features/catalog/inventory-pages";
 import { StoreSettingsPage } from "../features/store/store-settings-page";
 import { guestSessionResponseSchema } from "../../shared/contracts/guest";
 
@@ -54,8 +60,16 @@ export const router = createBrowserRouter([
 		element: <CmsArea />,
 		children: [
 			{ path: "/cms", element: <PhasePage title="Operations dashboard arriving soon." description="Orders, inventory, and daily delivery work will appear here in the next CMS phase." /> },
+			{ path: "/cms/products", element: <ProductsPage /> },
+			{ path: "/cms/products/new", element: <ProductForm mode="create" /> },
+			{ path: "/cms/products/:productId", element: <ProductForm mode="edit" /> },
+			{ path: "/cms/categories", element: <CategoriesPage /> },
+			{ path: "/cms/tags", element: <TagsPage /> },
+			{ path: "/cms/offerings", element: <OfferingsPage /> },
+			{ path: "/cms/offerings/new", element: <OfferingForm mode="create" /> },
+			{ path: "/cms/offerings/:offeringId", element: <OfferingForm mode="edit" /> },
 			{ path: "/cms/orders", element: <PhasePage title="Order operations are staged." description="The live order queue will arrive in the next CMS phase." /> },
-			{ path: "/cms/inventory", element: <PhasePage title="Inventory tools are staged." description="Offering stock controls will arrive in the next CMS phase." /> },
+			{ path: "/cms/inventory", element: <InventoryMovementsPage /> },
 			{ path: "/cms/settings/store", element: <StoreSettingsGate><StoreSettingsPage /></StoreSettingsGate> },
 		],
 	},

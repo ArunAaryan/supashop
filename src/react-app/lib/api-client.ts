@@ -31,12 +31,13 @@ async function readJson(response: Response): Promise<unknown | undefined> {
 export async function apiRequest<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
 	const { body, headers, ...request } = init;
 	const requestHeaders = new Headers(headers);
-	if (body !== undefined && !requestHeaders.has("content-type")) requestHeaders.set("content-type", "application/json");
+	const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+	if (body !== undefined && !isFormData && !requestHeaders.has("content-type")) requestHeaders.set("content-type", "application/json");
 	const response = await fetch(path, {
 		...request,
 		credentials: "include",
 		headers: requestHeaders,
-		...(body === undefined ? {} : { body: JSON.stringify(body) }),
+		...(body === undefined ? {} : { body: isFormData ? body : JSON.stringify(body) }),
 	});
 	const data = await readJson(response);
 	if (response.ok) return data as T;
