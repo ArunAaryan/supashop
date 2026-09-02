@@ -2,16 +2,19 @@
 
 Supashop is a single-store delivery application built with React, Hono, Cloudflare Workers, D1, and R2. Each deployed instance represents exactly one physical store or warehouse. It has no organizations, tenants, or multi-store administration.
 
-## Phase 1 status
+## Phase 1–2 status
 
-Phase 1 establishes the application foundation:
+Phases 1 and 2 establish the application and catalog foundation:
 
 - Better Auth email/password registration and sign-in, plus signed guest browser sessions.
 - Server-enforced CMS roles (`owner`, `admin`, `operations`, and `delivery`) and role-aware React shells.
 - A singleton store profile with contact information, address, serviceable postal codes, opening hours, and optimistic-concurrency updates.
-- D1 schema/migrations and an R2 binding reserved for future store and catalog media.
+- Flat categories and tags, product master records, sellable offerings, and server-driven CMS lists.
+- Ordered product galleries stored in R2, with up to five images per product and a 5 MiB limit per image.
+- Offering-level inventory with optimistic concurrency and an immutable manual-adjustment ledger.
+- Anonymous catalog browse, detail, filter, sort, pagination, and search APIs.
 
-The customer shop, search, catalog, product offerings, cart, inventory controls, checkout, order workflows, delivery proof, and analytics are not implemented yet. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
+The customer storefront, cart, checkout, order workflows, delivery proof, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
 
 ## Requirements
 
@@ -40,6 +43,8 @@ pnpm dev
 Paste the generated value into `BETTER_AUTH_SECRET` in `.dev.vars`; leave `BETTER_AUTH_URL` set to the local Vite URL unless the local host or port changes. Do not commit `.dev.vars` or reuse its secret in another environment. Wrangler loads `.dev.vars` for local development; local secrets are deliberately kept out of `wrangler.json`.
 
 Open [http://localhost:5173](http://localhost:5173), choose **Create account**, and register the exact email that will become the initial owner. Passwords must be at least eight characters. Do not grant an owner role until that registration succeeds.
+
+Local development uses Wrangler's local R2 emulation for product images; no remote bucket is created or changed by the setup commands.
 
 `pnpm db:migrate:local` is explicit about `--local`, so it migrates Wrangler's local persisted D1 database. It creates no remote D1 or R2 resource. If a clean local database is needed, remove the relevant local Wrangler state only after confirming the target path; do not run the remote commands below by accident.
 
@@ -147,9 +152,22 @@ pnpm check               # complete local verification, including a deploy dry r
 
 ## Architecture
 
-The React client uses React Router for the customer and CMS shells, TanStack Query for server state, and shared Zod contracts across the boundary. A Hono Worker exposes the API, creates Better Auth against the Drizzle D1 adapter, and resolves sessions and CMS permissions before privileged routes. D1 stores authentication, CMS roles, and the singleton store profile. The Worker has an R2 `MEDIA` binding for future media, but Phase 1 does not yet upload or serve catalog assets.
+The React client uses React Router for the customer and CMS shells, TanStack Query for server state, TanStack Table for server-driven CMS lists, and shared Zod contracts across the boundary. A Hono Worker exposes the API, creates Better Auth against the Drizzle D1 adapter, and resolves sessions and CMS permissions before privileged routes. D1 stores authentication, CMS roles, the singleton store profile, catalog entities, offerings, and inventory movements. The Worker mediates all product-image writes and reads through the R2 `MEDIA` binding, so clients never receive object keys or upload credentials.
 
 There is one `store_profile` record per instance, constrained to a singleton key. Store configuration is updated through the owner/admin CMS route with a version check, so conflicting edits are rejected instead of silently overwriting one another.
+
+Authorized owner, admin, and operations users manage `/cms/categories`, `/cms/tags`, `/cms/products`, `/cms/offerings`, and `/cms/inventory`. General offering edits never accept stock; the dedicated inventory adjustment action records the absolute resulting count and a required reason in the same D1 batch as the stock/version update.
+
+Anonymous catalog clients use:
+
+- `GET /api/catalog/categories`
+- `GET /api/catalog/tags`
+- `GET /api/catalog/products`
+- `GET /api/catalog/products/:slug`
+- `GET /api/catalog/search`
+- `GET /api/catalog/images/:imageId`
+
+Only active products in active categories with at least one active offering are public. Product images accept JPEG, PNG, WebP, and AVIF content after MIME and signature validation.
 
 ## References
 
