@@ -10,6 +10,8 @@ import {
 } from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
 import { createGuestRoutes } from "./modules/guest/guest-routes";
+import { createCatalogRoutes } from "./modules/catalog/catalog-routes";
+import { createPublicCatalogRoutes } from "./modules/catalog/public-routes";
 import { createStoreRoutes } from "./modules/store/store-routes";
 
 export function createApp() {
@@ -26,8 +28,10 @@ export function createApp() {
 	app.get("/api/health", (c) => c.json({ status: "ok" }));
 	app.on(["GET", "POST"], "/api/auth/*", (c) => createAuth(c.env).handler(c.req.raw));
 	app.route("/api/guest", createGuestRoutes());
+	app.route("/api", createPublicCatalogRoutes());
 
 	app.use("/api/*", sessionMiddleware);
+	app.route("/api", createCatalogRoutes());
 	app.route("/api", createStoreRoutes());
 	app.get("/api/session", (c) =>
 		c.json({ user: c.get("user"), session: publicSession(c.get("session")), cmsRole: c.get("cmsRole") }),

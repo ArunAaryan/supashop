@@ -517,6 +517,13 @@ export const productUpdateInputSchema = z
 	.strict()
 	.superRefine(validateBaseWeightPair);
 
+/**
+ * Complete product payload used by compatibility consumers that carry an
+ * optimistic-concurrency version for both create and update operations.
+ * New route code should prefer the explicit create/update schemas above.
+ */
+export const productInputSchema = productUpdateInputSchema;
+
 const offeringMutableInputShape = {
 	sku: codeSchema,
 	label: z.string().trim().min(1).max(120),
@@ -532,6 +539,16 @@ export const offeringCreateInputSchema = z
 
 export const offeringUpdateInputSchema = z
 	.object({ ...offeringMutableInputShape, version: versionSchema })
+	.strict()
+	.superRefine(validateOfferingRules);
+
+/**
+ * Complete offering payload used by compatibility consumers that include the
+ * parent product and an optimistic-concurrency version in one payload.
+ * New route code should prefer the explicit create/update schemas above.
+ */
+export const offeringInputSchema = z
+	.object({ productId: idSchema, ...offeringMutableInputShape, version: versionSchema })
 	.strict()
 	.superRefine(validateOfferingRules);
 
@@ -571,6 +588,9 @@ const cmsCategoryListQueryShape = {
 export const cmsCategoryListQuerySchema = z
 	.object(cmsCategoryListQueryShape)
 	.strict();
+
+/** Base CMS pagination, filtering, and sorting contract for taxonomy lists. */
+export const catalogListQuerySchema = cmsCategoryListQuerySchema;
 
 export const cmsTagListQuerySchema = z
 	.object(cmsCategoryListQueryShape)
@@ -701,12 +721,16 @@ export type CatalogListResponse<T> = z.output<
 
 export type CategoryCreateInput = z.infer<typeof categoryCreateInputSchema>;
 export type CategoryUpdateInput = z.infer<typeof categoryUpdateInputSchema>;
+export type CategoryInput = CategoryCreateInput;
 export type TagCreateInput = z.infer<typeof tagCreateInputSchema>;
 export type TagUpdateInput = z.infer<typeof tagUpdateInputSchema>;
+export type TagInput = TagCreateInput;
 export type ProductCreateInput = z.infer<typeof productCreateInputSchema>;
 export type ProductUpdateInput = z.infer<typeof productUpdateInputSchema>;
+export type ProductInput = z.infer<typeof productInputSchema>;
 export type OfferingCreateInput = z.infer<typeof offeringCreateInputSchema>;
 export type OfferingUpdateInput = z.infer<typeof offeringUpdateInputSchema>;
+export type OfferingInput = z.infer<typeof offeringInputSchema>;
 export type ImageUploadMetadata = z.infer<typeof imageUploadMetadataSchema>;
 export type ImageReorderInput = z.infer<typeof imageReorderInputSchema>;
 export type InventoryAdjustmentInput = z.infer<
@@ -714,6 +738,7 @@ export type InventoryAdjustmentInput = z.infer<
 >;
 
 export type CmsCategoryListQuery = z.infer<typeof cmsCategoryListQuerySchema>;
+export type CatalogListQuery = z.infer<typeof catalogListQuerySchema>;
 export type CmsTagListQuery = z.infer<typeof cmsTagListQuerySchema>;
 export type CmsProductListQuery = z.infer<typeof cmsProductListQuerySchema>;
 export type CmsOfferingListQuery = z.infer<typeof cmsOfferingListQuerySchema>;

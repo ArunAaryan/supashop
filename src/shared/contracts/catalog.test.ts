@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	catalogListResponseSchema,
+	catalogListQuerySchema,
 	categoryCreateInputSchema,
 	cmsCategoryListQuerySchema,
 	cmsInventoryMovementListQuerySchema,
@@ -10,9 +11,11 @@ import {
 	inventoryAdjustmentInputSchema,
 	inventoryMovementSchema,
 	offeringCreateInputSchema,
+	offeringInputSchema,
 	offeringSchema,
 	offeringUpdateInputSchema,
 	productCreateInputSchema,
+	productInputSchema,
 	productDetailSchema,
 	productImageSchema,
 	productSummarySchema,
@@ -143,6 +146,18 @@ const validProductDetail = {
 };
 
 describe("catalog inputs", () => {
+	it("retains complete compatibility payload contracts", () => {
+		expect(
+			productInputSchema.parse({ ...validProductInput, version: 1 }),
+		).toMatchObject({ code: "PRODUCE_01", slug: "fresh-produce", version: 1 });
+		expect(
+			offeringInputSchema.parse({ ...validOfferingInput, version: 1 }),
+		).toMatchObject({ sku: "PRODUCE_01-KG", productId: "product-1", version: 1 });
+		expect(
+			catalogListQuerySchema.safeParse({ page: "1", pageSize: "101" }).success,
+		).toBe(false);
+	});
+
 	it("normalizes product code and slug and deduplicates sorted tag IDs", () => {
 		const product = productCreateInputSchema.parse(validProductInput);
 
