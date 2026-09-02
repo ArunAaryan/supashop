@@ -63,18 +63,18 @@ export function DataTable<TData extends object>({
 	const rows = table.getRowModel().rows;
 
 	return <section aria-busy={isLoading} aria-label="Data table" className="overflow-hidden rounded-card border border-white/70 bg-surface shadow-float">
-		{isLoading ? <p className="px-5 pt-5 text-sm font-bold text-muted" role="status">Loading…</p> : null}
+		{isLoading ? <p className="px-5 pt-5 text-sm font-medium text-muted" role="status">Loading…</p> : null}
 		<div className="overflow-x-auto">
 			<table className="min-w-full border-collapse text-left text-sm">
-				<thead className="border-b border-line bg-[#fff7f2] text-xs uppercase tracking-[0.08em] text-muted">
+				<thead className="border-b border-line bg-[#f7fbfd] text-xs uppercase tracking-[0.08em] text-muted">
 					{table.getHeaderGroups().map((headerGroup) => <tr key={headerGroup.id}>
 						{headerGroup.headers.map((header) => {
 							if (header.isPlaceholder) return <th key={header.id} scope="col" />;
 							const canSort = header.column.getCanSort();
 							const sorted = header.column.getIsSorted();
 							const title = typeof header.column.columnDef.header === "string" ? header.column.columnDef.header : undefined;
-							return <th className="whitespace-nowrap px-5 py-3 font-black" key={header.id} scope="col">
-								{canSort ? <button aria-label={`Sort by ${headerLabel(title, header.column.id)}`} aria-pressed={sorted !== false} className="inline-flex items-center gap-1 text-left font-black hover:text-ink" onClick={header.column.getToggleSortingHandler()} type="button">
+							return <th className="whitespace-nowrap px-5 py-3 font-medium" key={header.id} scope="col">
+								{canSort ? <button aria-label={`Sort by ${headerLabel(title, header.column.id)}`} aria-pressed={sorted !== false} className="inline-flex items-center gap-1 text-left font-medium hover:text-ink" onClick={header.column.getToggleSortingHandler()} type="button">
 									{flexRender(header.column.columnDef.header, header.getContext())}
 									<span aria-hidden="true">{sorted === "asc" ? "↑" : sorted === "desc" ? "↓" : "↕"}</span>
 								</button> : flexRender(header.column.columnDef.header, header.getContext())}
@@ -83,7 +83,7 @@ export function DataTable<TData extends object>({
 					</tr>)}
 				</thead>
 				<tbody className="divide-y divide-line">
-					{rows.map((row) => <tr className="hover:bg-[#fffaf7]" key={row.id}>
+					{rows.map((row) => <tr className="hover:bg-[#f2f8fb]" key={row.id}>
 						{row.getVisibleCells().map((cell) => <td className="whitespace-nowrap px-5 py-4 text-ink" key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>)}
 					</tr>)}
 					{!isLoading && rows.length === 0 ? <tr><td className="px-5 py-8 text-center text-muted" colSpan={visibleColumnCount}>{emptyMessage}</td></tr> : null}
@@ -91,10 +91,10 @@ export function DataTable<TData extends object>({
 			</table>
 		</div>
 		<footer className="flex items-center justify-between gap-3 border-t border-line px-5 py-4 text-sm">
-			<p aria-live="polite" className="font-bold">Page {pageIndex + 1} of {pageCount}</p>
+			<p aria-live="polite" className="font-medium">Page {pageIndex + 1} of {pageCount}</p>
 			<div className="flex gap-2">
-				<button aria-label="Previous page" className="min-h-11 rounded-full border border-line px-4 font-bold hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-60" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} type="button">Previous</button>
-				<button aria-label="Next page" className="min-h-11 rounded-full border border-line px-4 font-bold hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-60" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} type="button">Next</button>
+				<button aria-label="Previous page" className="min-h-11 rounded-full border border-line px-4 font-medium hover:bg-[#f7fbfd] disabled:cursor-not-allowed disabled:opacity-60" disabled={!table.getCanPreviousPage()} onClick={() => table.previousPage()} type="button">Previous</button>
+				<button aria-label="Next page" className="min-h-11 rounded-full border border-line px-4 font-medium hover:bg-[#f7fbfd] disabled:cursor-not-allowed disabled:opacity-60" disabled={!table.getCanNextPage()} onClick={() => table.nextPage()} type="button">Next</button>
 			</div>
 		</footer>
 	</section>;
