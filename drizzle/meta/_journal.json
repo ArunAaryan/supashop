@@ -15,6 +15,13 @@
       "when": 1788278406172,
       "tag": "0001_catalog_inventory",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788323469215,
+      "tag": "0002_fair_venus",
+      "breakpoints": true
     }
   ]
 }

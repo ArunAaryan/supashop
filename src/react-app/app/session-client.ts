@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 export type CmsRole = "owner" | "admin" | "operations" | "delivery";
 
 export type SessionSnapshot = {
+	guest: boolean;
 	user: { id: string; email?: string } | null;
 	session: { id: string; expiresAt: string } | null;
 	cmsRole: CmsRole | null;

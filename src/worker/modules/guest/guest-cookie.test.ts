@@ -3,12 +3,23 @@ import { describe, expect, it } from "vitest";
 import { createGuestToken, verifyGuestToken } from "./guest-cookie";
 
 const secret = "test-secret-that-is-long-enough-to-securely-sign-guest-cookies";
+const thirtyDaysMs = 30 * 24 * 60 * 60 * 1_000;
 
 describe("guest cookie", () => {
 	it("round-trips a signed opaque id", async () => {
-		const token = await createGuestToken("guest-123", secret);
+		const now = 1_700_000_000_000;
+		const token = await createGuestToken("guest-123", secret, now + thirtyDaysMs);
 
-		expect(await verifyGuestToken(token, secret)).toBe("guest-123");
+		expect(await verifyGuestToken(token, secret, now)).toBe("guest-123");
+	});
+
+	it("rejects expired and far-future signed tokens", async () => {
+		const now = 1_700_000_000_000;
+		const expired = await createGuestToken("guest-123", secret, now - 1);
+		const farFuture = await createGuestToken("guest-123", secret, now + thirtyDaysMs + 1);
+
+		expect(await verifyGuestToken(expired, secret, now)).toBeNull();
+		expect(await verifyGuestToken(farFuture, secret, now)).toBeNull();
 	});
 
 	it("rejects tampering", async () => {

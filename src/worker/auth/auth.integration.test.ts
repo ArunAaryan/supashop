@@ -33,7 +33,15 @@ describe("Better Auth in the Worker", () => {
 		const response = await exports.default.fetch("http://example.com/api/session");
 
 		expect(response.status).toBe(200);
-		expect(await response.json()).toEqual({ user: null, session: null, cmsRole: null });
+		expect(await response.json()).toEqual({ user: null, session: null, cmsRole: null, guest: false });
+	});
+
+	it("reports a valid returning guest session without exposing its guest ID", async () => {
+		const guest = await exports.default.fetch("http://example.com/api/guest/session", { method: "POST" });
+		const cookie = cookieFrom(guest);
+		const response = await exports.default.fetch("http://example.com/api/session", { headers: { cookie } });
+
+		expect(await response.json()).toEqual({ user: null, session: null, cmsRole: null, guest: true });
 	});
 
 	it("persists an email/password session in migrated D1", async () => {

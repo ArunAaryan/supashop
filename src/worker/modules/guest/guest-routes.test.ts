@@ -41,4 +41,21 @@ describe("guest session route", () => {
 
 		expect(response.headers.get("set-cookie")).toContain("; Secure");
 	});
+
+	it("does not replace an existing valid guest cookie", async () => {
+		const created = await exports.default.fetch("http://example.com/api/guest/session", {
+			method: "POST",
+		});
+		const cookie = created.headers.get("set-cookie")?.split(";")[0];
+		if (!cookie) throw new Error("Expected a guest cookie");
+
+		const response = await exports.default.fetch("http://example.com/api/guest/session", {
+			method: "POST",
+			headers: { cookie },
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ guest: true });
+		expect(response.headers.get("set-cookie")).toBeNull();
+	});
 });

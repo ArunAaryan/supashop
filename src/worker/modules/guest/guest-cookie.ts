@@ -3,7 +3,9 @@ const guestIdDecoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }
 const base64urlPattern = /^[A-Za-z0-9_-]+$/;
 const hmacSignatureLength = 32;
 const maximumGuestIdBytes = 128;
+const maximumGuestPayloadBytes = 256;
 const minimumSecretBytes = 32;
+export const guestSessionLifetimeMs = 30 * 24 * 60 * 60 * 1_000;
 
 function assertSigningSecret(secret: string): Uint8Array {
 	const bytes = guestIdEncoder.encode(secret);
@@ -40,6 +42,31 @@ function assertGuestId(guestId: string): Uint8Array {
 	return bytes;
 }
 
+function assertExpiry(expiresAt: number): void {
+	if (!Number.isSafeInteger(expiresAt) || expiresAt < 0) {
+		throw new TypeError("guest expiry must be a nonnegative safe integer");
+	}
+}
+
+type GuestTokenPayload = { guestId: string; expiresAt: number };
+
+function decodePayload(bytes: Uint8Array): GuestTokenPayload | null {
+	if (bytes.byteLength === 0 || bytes.byteLength > maximumGuestPayloadBytes) return null;
+	try {
+		const value: unknown = JSON.parse(guestIdDecoder.decode(bytes));
+		if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+		const record = value as Record<string, unknown>;
+		if (Object.keys(record).length !== 2 || !("guestId" in record) || !("expiresAt" in record)) return null;
+		const guestId = record.guestId;
+		const expiresAt = record.expiresAt;
+		if (typeof guestId !== "string" || typeof expiresAt !== "number" || !Number.isSafeInteger(expiresAt) || expiresAt < 0) return null;
+		assertGuestId(guestId);
+		return { guestId, expiresAt };
+	} catch {
+		return null;
+	}
+}
+
 async function signingKey(secret: string): Promise<CryptoKey> {
 	return crypto.subtle.importKey(
 		"raw",
@@ -65,34 +92,43 @@ function signaturesMatch(expected: Uint8Array, actual: Uint8Array): boolean {
 	return difference === 0;
 }
 
-export async function createGuestToken(guestId: string, secret: string): Promise<string> {
-	const encodedGuestId = assertGuestId(guestId);
-	const signature = await sign(encodedGuestId, secret);
-	return `${encodeBase64url(encodedGuestId)}.${encodeBase64url(signature)}`;
+export async function createGuestToken(
+	guestId: string,
+	secret: string,
+	expiresAt = Date.now() + guestSessionLifetimeMs,
+): Promise<string> {
+	assertGuestId(guestId);
+	assertExpiry(expiresAt);
+	const payload = guestIdEncoder.encode(JSON.stringify({ guestId, expiresAt }));
+	const signature = await sign(payload, secret);
+	return `${encodeBase64url(payload)}.${encodeBase64url(signature)}`;
 }
 
-export async function verifyGuestToken(token: string, secret: string): Promise<string | null> {
+export async function verifyGuestToken(
+	token: string,
+	secret: string,
+	now = Date.now(),
+): Promise<string | null> {
+	if (!Number.isSafeInteger(now) || now < 0) return null;
 	const parts = token.split(".");
 	if (parts.length !== 2) return null;
 
 	const [encodedGuestId, encodedSignature] = parts;
 	if (!encodedGuestId || !encodedSignature) return null;
 
-	const guestIdBytes = decodeBase64url(encodedGuestId);
+	const payloadBytes = decodeBase64url(encodedGuestId);
 	const suppliedSignature = decodeBase64url(encodedSignature);
-	if (!guestIdBytes || !suppliedSignature || guestIdBytes.byteLength > maximumGuestIdBytes || suppliedSignature.byteLength !== hmacSignatureLength) {
+	if (!payloadBytes || !suppliedSignature || payloadBytes.byteLength > maximumGuestPayloadBytes || suppliedSignature.byteLength !== hmacSignatureLength) {
 		return null;
 	}
 
-	let guestId: string;
-	try {
-		guestId = guestIdDecoder.decode(guestIdBytes);
-	} catch {
+	const payload = decodePayload(payloadBytes);
+	if (!payload || !signaturesMatch(await sign(payloadBytes, secret), suppliedSignature)) {
 		return null;
 	}
-	if (guestId.length === 0 || !signaturesMatch(await sign(guestIdBytes, secret), suppliedSignature)) {
+	if (payload.expiresAt <= now || payload.expiresAt > now + guestSessionLifetimeMs) {
 		return null;
 	}
 
-	return guestId;
+	return payload.guestId;
 }

@@ -6,6 +6,7 @@ import { Button } from "../../components/button";
 import { Field } from "../../components/field";
 import { authClient } from "../../lib/auth-client";
 import { getSession } from "../../app/session-client";
+import { cartKeys, mergeGuestCart } from "../cart/cart-api";
 
 type LoginPageProps = {
 	onGuest: () => void | Promise<void>;
@@ -43,6 +44,11 @@ export function LoginPage({ onGuest }: LoginPageProps) {
 			if (result.error) {
 				setError(messageFrom(result.error));
 				return;
+			}
+			try {
+				queryClient.setQueryData(cartKeys.cart, await mergeGuestCart());
+			} catch {
+				await queryClient.invalidateQueries({ queryKey: cartKeys.cart });
 			}
 			queryClient.removeQueries({ queryKey: ["session"] });
 			await queryClient.fetchQuery({ queryKey: ["session"], queryFn: getSession });

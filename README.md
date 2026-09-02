@@ -2,9 +2,9 @@
 
 Supashop is a single-store delivery application built with React, Hono, Cloudflare Workers, D1, and R2. Each deployed instance represents exactly one physical store or warehouse. It has no organizations, tenants, or multi-store administration.
 
-## Phase 1–2 status
+## Phase 1–3 status
 
-Phases 1 and 2 establish the application and catalog foundation:
+Phases 1 through 3 establish the application, catalog, storefront, and cart foundation:
 
 - Better Auth email/password registration and sign-in, plus signed guest browser sessions.
 - Server-enforced CMS roles (`owner`, `admin`, `operations`, and `delivery`) and role-aware React shells.
@@ -13,8 +13,10 @@ Phases 1 and 2 establish the application and catalog foundation:
 - Ordered product galleries stored in R2, with up to five images per product and a 5 MiB limit per image.
 - Offering-level inventory with optimistic concurrency and an immutable manual-adjustment ledger.
 - Anonymous catalog browse, detail, filter, sort, pagination, and search APIs.
+- A responsive customer storefront with category browsing, URL-driven search and filters, product galleries, offering selection, and live availability.
+- Persistent registered and signed-guest carts with authoritative current pricing, visible price/stock changes, quantity controls, and guest-to-account merge after authentication.
 
-The customer storefront, cart, checkout, order workflows, delivery proof, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
+Checkout, order workflows, delivery proof, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
 
 ## Requirements
 
@@ -152,7 +154,7 @@ pnpm check               # complete local verification, including a deploy dry r
 
 ## Architecture
 
-The React client uses React Router for the customer and CMS shells, TanStack Query for server state, TanStack Table for server-driven CMS lists, and shared Zod contracts across the boundary. A Hono Worker exposes the API, creates Better Auth against the Drizzle D1 adapter, and resolves sessions and CMS permissions before privileged routes. D1 stores authentication, CMS roles, the singleton store profile, catalog entities, offerings, and inventory movements. The Worker mediates all product-image writes and reads through the R2 `MEDIA` binding, so clients never receive object keys or upload credentials.
+The React client uses React Router for the customer and CMS shells, TanStack Query for server state, TanStack Table for server-driven CMS lists, and shared Zod contracts across the boundary. A Hono Worker exposes the API, creates Better Auth against the Drizzle D1 adapter, and resolves registered, signed-guest, and CMS identities before protected routes. D1 stores authentication, CMS roles, the singleton store profile, catalog entities, offerings, carts, and inventory movements. The Worker mediates all product-image writes and reads through the R2 `MEDIA` binding, so clients never receive object keys or upload credentials.
 
 There is one `store_profile` record per instance, constrained to a singleton key. Store configuration is updated through the owner/admin CMS route with a version check, so conflicting edits are rejected instead of silently overwriting one another.
 
@@ -168,6 +170,16 @@ Anonymous catalog clients use:
 - `GET /api/catalog/images/:imageId`
 
 Only active products in active categories with at least one active offering are public. Product images accept JPEG, PNG, WebP, and AVIF content after MIME and signature validation.
+
+Customer routes are `/shop`, `/search`, `/products/:slug`, and `/cart`. Cart APIs are:
+
+- `GET /api/cart`
+- `POST /api/cart/items`
+- `PUT /api/cart/items/:offeringId`
+- `DELETE /api/cart/items/:offeringId`
+- `POST /api/cart/merge`
+
+Cart writes never reserve or deduct stock. Each cart response recalculates current effective prices and availability, retaining changed or unavailable lines for customer review. Guest credentials are signed, expire after 30 days, and are merged into the registered cart after successful authentication.
 
 ## References
 

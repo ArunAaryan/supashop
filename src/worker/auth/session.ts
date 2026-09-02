@@ -1,16 +1,19 @@
 import { and, eq } from "drizzle-orm";
 import type { MiddlewareHandler } from "hono";
+import { getCookie } from "hono/cookie";
 
 import { createDb } from "../db/client";
 import { cmsRole } from "../db/schema";
 import { ApiError, apiErrorResponse } from "../http/errors";
 import { createAuth, type AuthSession, type AuthUser, type WorkerBindings } from "./create-auth";
 import { can, type CmsRole, type Permission } from "./permissions";
+import { verifyGuestToken } from "../modules/guest/guest-cookie";
 
 export type AppEnv = {
 	Bindings: WorkerBindings;
 	Variables: {
 		cmsRole: CmsRole | null;
+		guestId: string | null;
 		requestId: string;
 		session: AuthSession | null;
 		user: AuthUser | null;
@@ -28,6 +31,12 @@ export const sessionMiddleware: MiddlewareHandler<AppEnv> = async (c, next) => {
 	c.set("user", null);
 	c.set("session", null);
 	c.set("cmsRole", null);
+	c.set("guestId", null);
+
+	const guestToken = getCookie(c, "supashop_guest");
+	if (guestToken) {
+		c.set("guestId", await verifyGuestToken(guestToken, c.env.BETTER_AUTH_SECRET));
+	}
 
 	const authSession = await createAuth(c.env).api.getSession({ headers: c.req.raw.headers });
 	if (authSession) {

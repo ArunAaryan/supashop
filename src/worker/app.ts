@@ -10,6 +10,7 @@ import {
 } from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
 import { createGuestRoutes } from "./modules/guest/guest-routes";
+import { createCartRoutes } from "./modules/cart/cart-routes";
 import { createCatalogRoutes } from "./modules/catalog/catalog-routes";
 import { createPublicCatalogRoutes } from "./modules/catalog/public-routes";
 import { createStoreRoutes } from "./modules/store/store-routes";
@@ -31,10 +32,11 @@ export function createApp() {
 	app.route("/api", createPublicCatalogRoutes());
 
 	app.use("/api/*", sessionMiddleware);
+	app.route("/api", createCartRoutes());
 	app.route("/api", createCatalogRoutes());
 	app.route("/api", createStoreRoutes());
 	app.get("/api/session", (c) =>
-		c.json({ user: c.get("user"), session: publicSession(c.get("session")), cmsRole: c.get("cmsRole") }),
+		c.json({ user: c.get("user"), session: publicSession(c.get("session")), cmsRole: c.get("cmsRole"), guest: Boolean(c.get("guestId")) }),
 	);
 
 	app.get(

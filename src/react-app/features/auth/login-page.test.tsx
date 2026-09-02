@@ -113,7 +113,12 @@ describe("LoginPage", () => {
 		const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 		client.setQueryData(["session"], { user: null, session: null, cmsRole: null });
 		signInEmail.mockResolvedValueOnce({ data: { user: { id: "customer" } }, error: null });
-		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ user: { id: "customer" }, session: { id: "session", expiresAt: "later" }, cmsRole: null }), { status: 200 })));
+		const fetchMock = vi.fn((url: string) => {
+			if (url === "/api/cart/merge") return Promise.resolve(new Response(JSON.stringify({ lines: [], itemCount: 0, subtotalMinor: 0, requiresReview: false, updatedAt: null })));
+			if (url === "/api/session") return Promise.resolve(new Response(JSON.stringify({ user: { id: "customer" }, session: { id: "session", expiresAt: "later" }, cmsRole: null }), { status: 200 }));
+			return Promise.reject(new Error(`Unexpected request: ${url}`));
+		});
+		vi.stubGlobal("fetch", fetchMock);
 
 		render(
 			<QueryClientProvider client={client}>
@@ -132,6 +137,7 @@ describe("LoginPage", () => {
 		await user.click(screen.getByRole("button", { name: /sign in/i }));
 
 		expect(await screen.findByText("Shop destination")).toBeInTheDocument();
+		expect(fetchMock).toHaveBeenCalledWith("/api/cart/merge", expect.objectContaining({ method: "POST" }));
 		expect(fetch).toHaveBeenCalledWith("/api/session", { credentials: "include" });
 	});
 });
