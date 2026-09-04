@@ -37,6 +37,7 @@ export const cartLineSchema = z
 		imageUrl: z.string().trim().min(1).max(2_000).nullable(),
 		quantity: cartQuantitySchema,
 		lineVersion: versionSchema,
+		offeringVersion: versionSchema,
 		unitPriceMinorAtAdd: minorUnitSchema,
 		currentUnitPriceMinor: minorUnitSchema,
 		lineTotalMinor: minorUnitSchema,

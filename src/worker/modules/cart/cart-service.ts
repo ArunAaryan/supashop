@@ -37,6 +37,7 @@ function line(row: StoredCartLine): CartLine {
 		imageUrl: row.image_url,
 		quantity: row.quantity,
 		lineVersion: row.line_version,
+		offeringVersion: row.offering_version,
 		unitPriceMinorAtAdd: row.effective_price_minor_at_add,
 		currentUnitPriceMinor,
 		lineTotalMinor: currentUnitPriceMinor * row.quantity,

@@ -1,8 +1,7 @@
 import { calculateEffectivePrice } from "../../../shared/domain/discount";
+import type { CustomerPrincipal } from "../../auth/customer-principal";
 
-export type CartOwner =
-	| { kind: "user"; id: string }
-	| { kind: "guest"; id: string };
+export type CartOwner = CustomerPrincipal;
 
 export type StoredCart = { updated_at: number };
 
@@ -15,6 +14,7 @@ export type StoredCartLine = {
 	image_url: string | null;
 	quantity: number;
 	line_version: number;
+	offering_version: number;
 	effective_price_minor_at_add: number;
 	list_price_minor: number;
 	discount_type: "none" | "fixed" | "percentage";
@@ -37,7 +37,7 @@ export type StoredOfferingForCart = Pick<StoredCartLine,
 >;
 
 function cartId(owner: CartOwner) {
-	return `${owner.kind}:${owner.id}`;
+	return owner.ownerKey;
 }
 
 export function currentEffectivePrice(row: StoredOfferingForCart) {
@@ -68,7 +68,7 @@ export class CartRepository {
 		const result = await this.database.prepare(
 			`SELECT ci.offering_id, p.id AS product_id, p.slug AS product_slug, p.name AS product_name,
 				o.label AS offering_label, '/api/catalog/images/' || image.id AS image_url,
-				ci.quantity, ci.version AS line_version, ci.effective_price_minor_at_add,
+				ci.quantity, ci.version AS line_version, ci.effective_price_minor_at_add, o.version AS offering_version,
 				o.list_price_minor, o.discount_type, o.discount_value, o.stock_quantity,
 				o.active AS offering_active, p.active AS product_active, c.active AS category_active
 			 FROM cart_item ci

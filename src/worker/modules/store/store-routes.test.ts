@@ -36,6 +36,7 @@ function storePayload(overrides: Record<string, unknown> = {}) {
 			closed: false,
 		})),
 		serviceablePostalCodes: ["ab12", " AB12 ", "cd34"],
+		closures: [],
 		...overrides,
 	};
 }
@@ -76,6 +77,7 @@ async function clearStore() {
 	await env.DB.batch([
 		env.DB.prepare("DELETE FROM store_hours"),
 		env.DB.prepare("DELETE FROM serviceable_postal_code"),
+		env.DB.prepare("DELETE FROM store_closure"),
 		env.DB.prepare("DELETE FROM store_profile WHERE singleton_key = 1"),
 	]);
 }
@@ -278,5 +280,32 @@ describe("store settings routes", () => {
 		expect(
 			await env.DB.prepare("SELECT COUNT(*) AS count FROM store_hours").first<{ count: number }>(),
 		).toEqual({ count: 7 });
+	});
+
+	it("round-trips closures through the CMS endpoint and removes them on an empty list", async () => {
+		await clearStore();
+		const { cookie } = await signInAs("owner");
+		const closures = [
+			{
+				id: crypto.randomUUID(),
+				startsOn: "2026-12-24",
+				endsOn: "2026-12-26",
+				reason: "Christmas holiday",
+			},
+		];
+		const saved = await putStore(cookie, storePayload({ closures }));
+		expect(saved.status).toBe(200);
+		expect(await saved.json()).toMatchObject({ closures });
+
+		const read = await exports.default.fetch("http://example.com/api/cms/store", { headers: { cookie } });
+		expect(read.status).toBe(200);
+		expect(await read.json()).toMatchObject({ closures });
+
+		const cleared = await putStore(cookie, storePayload({ version: 2, closures: [] }));
+		expect(cleared.status).toBe(200);
+		expect(await cleared.json()).toMatchObject({ version: 3, closures: [] });
+		expect(
+			await env.DB.prepare("SELECT COUNT(*) AS count FROM store_closure").first<{ count: number }>(),
+		).toEqual({ count: 0 });
 	});
 });

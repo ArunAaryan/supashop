@@ -38,6 +38,7 @@ function emptyStore(): StoreSettingsResponse {
 			closed: true,
 		})),
 		serviceablePostalCodes: [],
+		closures: [],
 	});
 }
 
@@ -70,6 +71,12 @@ function toStoreSettings(store: StoredStore): StoreSettingsResponse {
 			closed: Boolean(hour.closed),
 		})),
 		serviceablePostalCodes: store.serviceablePostalCodes,
+		closures: store.closures.map((closure) => ({
+			id: closure.id,
+			startsOn: closure.startsOn,
+			endsOn: closure.endsOn,
+			reason: closure.reason,
+		})),
 	});
 }
 

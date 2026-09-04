@@ -90,6 +90,20 @@ export function StoreSettingsPage() {
 		if (!form.serviceablePostalCodes.includes(code)) update("serviceablePostalCodes", [...form.serviceablePostalCodes, code]);
 		setPostalCodeEntry("");
 	};
+	const updateClosure = (index: number, change: (closure: StoreSettingsInput["closures"][number]) => StoreSettingsInput["closures"][number]) => {
+		setForm((current) => current ? { ...current, closures: current.closures.map((closure, closureIndex) => closureIndex === index ? change(closure) : closure) } : current);
+		clearErrorPrefix(`closures.${index}`);
+		clearErrorPrefix("closures");
+		setNotice(null);
+	};
+	const addClosure = () => {
+		if (!form) return;
+		update("closures", [...form.closures, { id: crypto.randomUUID(), startsOn: "", endsOn: "", reason: "" }]);
+	};
+	const removeClosure = (index: number) => {
+		if (!form) return;
+		update("closures", form.closures.filter((_, closureIndex) => closureIndex !== index));
+	};
 	const submit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		if (!form) return;
@@ -144,6 +158,9 @@ export function StoreSettingsPage() {
 
 		<Section description="Keep all seven days visible. Closed days use 00:00 for both times." title="Opening hours">
 			<div className="grid gap-3">{errors.hours ? <p className="text-sm text-[#ae3f27]">{errors.hours}</p> : null}{form.hours.map((hour, index) => <div className="grid gap-3 rounded-2xl border border-line p-3 sm:grid-cols-[9rem_1fr_1fr_auto] sm:items-end" key={hour.weekday}><p className="pb-3 text-sm font-medium">{weekdays[hour.weekday]}</p><Field disabled={hour.closed} error={errors[`hours.${index}.opensMinute`]} label={`${weekdays[hour.weekday]} opens`} onChange={(event) => updateHour(index, (item) => ({ ...item, opensMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.opensMinute)} /><Field disabled={hour.closed} error={errors[`hours.${index}.closesMinute`]} label={`${weekdays[hour.weekday]} closes`} onChange={(event) => updateHour(index, (item) => ({ ...item, closesMinute: minutesFor(event.target.value) }))} type="time" value={timeFor(hour.closesMinute)} /><label className="flex min-h-12 items-center gap-2 text-sm font-medium"><input aria-label={`${weekdays[hour.weekday]} closed`} checked={hour.closed} className="size-5 accent-action" onChange={(event) => updateHour(index, (item) => ({ ...item, closed: event.target.checked, opensMinute: event.target.checked ? 0 : 540, closesMinute: event.target.checked ? 0 : 1020 }))} type="checkbox" />Closed</label>{errors[`hours.${index}`] ? <p className="text-sm text-[#ae3f27] sm:col-span-4">{errors[`hours.${index}`]}</p> : null}</div>)}</div>
+		</Section>
+		<Section description="Block delivery and checkout for specific dates (for example public holidays or maintenance)." title="Closures">
+			<div className="grid gap-4">{errors.closures ? <p className="text-sm text-[#ae3f27]">{errors.closures}</p> : null}{form.closures.length === 0 ? <p className="text-sm text-muted">No closures planned. Add one below when you need to pause service.</p> : null}{form.closures.map((closure, index) => <div className="grid gap-3 rounded-2xl border border-line p-3 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-end" key={closure.id}><Field error={errors[`closures.${index}.startsOn`]} label="Starts on" onChange={(event) => updateClosure(index, (item) => ({ ...item, startsOn: event.target.value }))} type="date" value={closure.startsOn} /><Field error={errors[`closures.${index}.endsOn`]} label="Ends on" onChange={(event) => updateClosure(index, (item) => ({ ...item, endsOn: event.target.value }))} type="date" value={closure.endsOn} /><Field error={errors[`closures.${index}.reason`]} label="Reason" onChange={(event) => updateClosure(index, (item) => ({ ...item, reason: event.target.value }))} placeholder="Optional" value={closure.reason} />{errors[`closures.${index}`] ? <p className="text-sm text-[#ae3f27]">{errors[`closures.${index}`]}</p> : null}<Button className="mb-0.5" onClick={() => removeClosure(index)} type="button" variant="secondary">Remove</Button></div>)}<Button className="justify-self-start" onClick={addClosure} type="button" variant="secondary">Add closure</Button></div>
 		</Section>
 		<Section description="Customers see this during checkout and in their delivery confirmation." title="Customer instructions"><TextArea error={errors.deliveryInstructions} id="customer-facing-delivery-instructions" label="Customer-facing delivery instructions" onChange={(value) => update("deliveryInstructions", value || null)} value={form.deliveryInstructions ?? ""} /></Section>
 		<div className="fixed inset-x-0 bottom-0 z-10 border-t border-line bg-surface/95 p-3 backdrop-blur md:left-60"><div className="mx-auto flex max-w-6xl justify-end"><Button disabled={save.isPending} type="submit">{save.isPending ? "Saving…" : "Save store settings"}</Button></div></div>

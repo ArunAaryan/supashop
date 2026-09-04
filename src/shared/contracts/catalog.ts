@@ -4,11 +4,12 @@ import {
 	discountTypes,
 	type DiscountType,
 } from "../domain/discount";
+import { inventoryMovementTypeValues } from "../domain/order";
 
 export const weightUnits = ["g", "kg", "ml", "l"] as const;
 export type WeightUnit = (typeof weightUnits)[number];
 
-export const inventoryMovementTypes = ["manual_adjustment"] as const;
+export const inventoryMovementTypes = inventoryMovementTypeValues;
 export type InventoryMovementType = (typeof inventoryMovementTypes)[number];
 
 const idSchema = z.string().trim().min(1).max(100);

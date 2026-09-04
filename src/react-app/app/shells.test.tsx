@@ -19,7 +19,7 @@ describe("application shells", () => {
 	});
 
 	it("shows the current cart count in the persistent header", async () => {
-		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ lines: [{ offeringId: "offer-1", productId: "product-1", productSlug: "milk", productName: "Milk", offeringLabel: "1 litre", imageUrl: null, quantity: 3, lineVersion: 1, unitPriceMinorAtAdd: 100, currentUnitPriceMinor: 100, lineTotalMinor: 300, priceChanged: false, availableStock: 4, availability: "available" }], itemCount: 3, subtotalMinor: 300, requiresReview: false, updatedAt: 1 }))));
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ lines: [{ offeringId: "offer-1", productId: "product-1", productSlug: "milk", productName: "Milk", offeringLabel: "1 litre", imageUrl: null, quantity: 3, lineVersion: 1, offeringVersion: 1, unitPriceMinorAtAdd: 100, currentUnitPriceMinor: 100, lineTotalMinor: 300, priceChanged: false, availableStock: 4, availability: "available" }], itemCount: 3, subtotalMinor: 300, requiresReview: false, updatedAt: 1 }))));
 		render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MemoryRouter><CustomerShell><p>Shop</p></CustomerShell></MemoryRouter></QueryClientProvider>);
 		expect(await screen.findByRole("link", { name: /cart, 3 items/i })).toHaveAttribute("href", "/cart");
 	});

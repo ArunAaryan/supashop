@@ -10,7 +10,7 @@ import { useAddCartItem } from "./cart-api";
 const cart = {
 	lines: [{
 		offeringId: "offering-1", productId: "product-1", productSlug: "whole-milk", productName: "Whole Milk", offeringLabel: "1 litre bottle", imageUrl: null,
-		quantity: 2, lineVersion: 1, unitPriceMinorAtAdd: 600, currentUnitPriceMinor: 500, lineTotalMinor: 1000,
+		quantity: 2, lineVersion: 1, offeringVersion: 1, unitPriceMinorAtAdd: 600, currentUnitPriceMinor: 500, lineTotalMinor: 1000,
 		priceChanged: true, availableStock: 1, availability: "insufficient_stock",
 	}],
 	itemCount: 2, subtotalMinor: 1000, requiresReview: true, updatedAt: 1,
@@ -33,7 +33,7 @@ function cartFetch() {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("CartPage", () => {
-	it("renders cart lines, repricing and availability warnings, totals, and Phase 4 checkout status", async () => {
+	it("renders cart lines, repricing and availability warnings, totals, and blocks checkout until review", async () => {
 		vi.stubGlobal("fetch", cartFetch());
 		renderWithClient(<CartPage />);
 
@@ -42,7 +42,22 @@ describe("CartPage", () => {
 		expect(screen.getByText(/price changed/i)).toBeInTheDocument();
 		expect(screen.getByText(/only 1 available/i)).toBeInTheDocument();
 		expect(screen.getAllByText("₹10.00")).toHaveLength(2);
-		expect(screen.getByText(/checkout arrives in phase 4/i)).toBeInTheDocument();
+		expect(screen.getByText(/update unavailable cart lines before checkout/i)).toBeInTheDocument();
+		expect(screen.queryByRole("link", { name: /checkout/i })).not.toBeInTheDocument();
+	});
+
+	it("links a clean cart to COD checkout", async () => {
+		const clean = { ...cart, lines: [{ ...cart.lines[0], availableStock: 3, availability: "available", priceChanged: false, unitPriceMinorAtAdd: 500 }], requiresReview: false };
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(clean))));
+		renderWithClient(<CartPage />);
+		expect(await screen.findByRole("link", { name: /checkout.*cod/i })).toHaveAttribute("href", "/checkout");
+	});
+
+	it("allows checkout after a price change when the offering remains available", async () => {
+		const repriced = { ...cart, lines: [{ ...cart.lines[0], availableStock: 3, availability: "available", priceChanged: true }], requiresReview: true };
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(repriced))));
+		renderWithClient(<CartPage />);
+		expect(await screen.findByRole("link", { name: /checkout.*cod/i })).toHaveAttribute("href", "/checkout");
 	});
 
 	it("updates quantities and removes a line when decrement reaches zero", async () => {

@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { check, index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
 
@@ -59,3 +59,20 @@ export const serviceablePostalCode = sqliteTable("serviceable_postal_code", {
 	postalCode: text("postal_code").primaryKey(),
 	active: integer("active", { mode: "boolean" }).default(true).notNull(),
 });
+
+export const storeClosure = sqliteTable(
+	"store_closure",
+	{
+		id: text("id").primaryKey(),
+		startsOn: text("starts_on").notNull(),
+		endsOn: text("ends_on").notNull(),
+		reason: text("reason").notNull(),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+		updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		index("storeClosureDateRangeIdx").on(table.startsOn, table.endsOn),
+		check("store_closure_date_format_check", sql`${table.startsOn} glob '????-??-??' and ${table.endsOn} glob '????-??-??'`),
+		check("store_closure_date_range_check", sql`${table.startsOn} <= ${table.endsOn}`),
+	],
+);

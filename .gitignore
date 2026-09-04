@@ -201,3 +201,6 @@ dist
 ### Local agent artifacts ###
 .worktrees/
 .superpowers/
+
+# Local pnpm store (never commit)
+.pnpm-store/

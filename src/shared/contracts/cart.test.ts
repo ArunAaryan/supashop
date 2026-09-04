@@ -88,6 +88,7 @@ const validCart = {
 			imageUrl: image.url,
 			quantity: 2,
 			lineVersion: 2,
+			offeringVersion: offering.version,
 			unitPriceMinorAtAdd: 1_000,
 			currentUnitPriceMinor: 900,
 			lineTotalMinor: 1_800,

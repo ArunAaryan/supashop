@@ -10,10 +10,12 @@ import {
 } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
+import { commerceOrder } from "./orders";
+import { inventoryMovementTypeValues } from "../../../shared/domain/order";
 
 export const weightUnitValues = ["g", "kg", "ml", "l"] as const;
 export const discountTypeValues = ["none", "fixed", "percentage"] as const;
-export const inventoryMovementTypeValues = ["manual_adjustment"] as const;
+export { inventoryMovementTypeValues };
 
 export const category = sqliteTable(
 	"category",
@@ -193,15 +195,18 @@ export const inventoryMovement = sqliteTable(
 		resultingQuantity: integer("resulting_quantity").notNull(),
 		reason: text("reason").notNull(),
 		movementType: text("movement_type", { enum: inventoryMovementTypeValues }).notNull(),
-		actorUserId: text("actor_user_id")
-			.notNull()
-			.references(() => user.id, { onDelete: "restrict" }),
+		actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "restrict" }),
+		orderId: text("order_id").references(() => commerceOrder.id, { onDelete: "restrict" }),
 		offeringVersion: integer("offering_version").notNull(),
 		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
 	},
 	(table) => [
 		index("inventoryMovementOfferingCreatedIdx").on(table.offeringId, table.createdAt),
 		index("inventoryMovementActorCreatedIdx").on(table.actorUserId, table.createdAt),
+		index("inventoryMovementOrderCreatedIdx").on(table.orderId, table.createdAt),
+		uniqueIndex("inventoryMovementOrderOfferingTypeUnique")
+			.on(table.orderId, table.offeringId, table.movementType)
+			.where(sql`${table.orderId} is not null`),
 		check("inventory_movement_previous_quantity_check", sql`${table.previousQuantity} >= 0`),
 		check("inventory_movement_resulting_quantity_check", sql`${table.resultingQuantity} >= 0`),
 		check("inventory_movement_quantity_delta_check", sql`${table.quantityDelta} != 0`),
@@ -211,7 +216,7 @@ export const inventoryMovement = sqliteTable(
 		),
 		check(
 			"inventory_movement_type_check",
-			sql`${table.movementType} in ('manual_adjustment')`,
+			sql`${table.movementType} in ('manual_adjustment', 'checkout_deduction', 'cancellation_restoration')`,
 		),
 		check("inventory_movement_offering_version_check", sql`${table.offeringVersion} > 0`),
 	],

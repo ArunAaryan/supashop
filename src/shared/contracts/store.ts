@@ -55,6 +55,33 @@ export const storeHourSchema = z
 		}
 	});
 
+const weekdayDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Enter a valid date (YYYY-MM-DD)");
+
+const storeClosureSchema = z
+	.object({
+		id: z.string().trim().min(1).max(100),
+		startsOn: weekdayDateSchema,
+		endsOn: weekdayDateSchema,
+		reason: z.string().trim().max(200),
+	})
+	.strict();
+
+const closuresSchema = z
+	.array(storeClosureSchema)
+	.max(100, "Provide at most 100 closures")
+	.superRefine((closures, context) => {
+		const ids = new Set<string>();
+		for (const [index, closure] of closures.entries()) {
+			if (ids.has(closure.id)) {
+				context.addIssue({ code: "custom", path: [index, "id"], message: "Closure ids must be unique" });
+			}
+			ids.add(closure.id);
+			if (closure.startsOn > closure.endsOn) {
+				context.addIssue({ code: "custom", path: [index, "endsOn"], message: "Closing date must be after the opening date" });
+			}
+		}
+	});
+
 const hoursSchema = z
 	.array(storeHourSchema)
 	.length(7, "Provide one record for each weekday")
@@ -95,6 +122,7 @@ const storeSettingsShape = {
 		orderCutoffMinutes: z.number().int().min(0).max(1_439).nullable(),
 		hours: hoursSchema,
 		serviceablePostalCodes: serviceablePostalCodesSchema,
+		closures: closuresSchema,
 };
 
 function locationPairIsComplete(
@@ -138,6 +166,7 @@ const draftStoreSettingsResponseSchema = z
 		orderCutoffMinutes: z.number().int().min(0).max(1_439).nullable(),
 		hours: hoursSchema,
 		serviceablePostalCodes: serviceablePostalCodesSchema,
+		closures: closuresSchema,
 		configured: z.literal(false),
 		ownerUserId: z.null(),
 	})
@@ -174,6 +203,8 @@ export const publicStoreSettingsResponseSchema = z
 	.object(publicStoreSettingsShape)
 	.strict()
 	.superRefine(locationPairIsComplete);
+
+export type StoreClosure = z.infer<typeof storeClosureSchema>;
 
 export type StoreSettingsInput = z.infer<typeof storeSettingsSchema>;
 export type StoreSettingsResponse = z.infer<typeof storeSettingsResponseSchema>;

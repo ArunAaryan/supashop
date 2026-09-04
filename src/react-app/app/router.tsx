@@ -14,6 +14,10 @@ import { OfferingsPage } from "../features/catalog/offerings-page";
 import { InventoryMovementsPage } from "../features/catalog/inventory-pages";
 import { StoreSettingsPage } from "../features/store/store-settings-page";
 import { CartPage } from "../features/cart/cart-page";
+import { CheckoutPage } from "../features/checkout/checkout-page";
+import { AccountPage } from "../features/orders/account-page";
+import { OrderDetailPage } from "../features/orders/order-detail-page";
+import { OrdersPage } from "../features/orders/orders-page";
 import { ShopHomePage } from "../features/shop/shop-home-page";
 import { ShopProductPage } from "../features/shop/shop-product-page";
 import { ShopSearchPage } from "../features/shop/shop-search-page";
@@ -36,6 +40,11 @@ function CustomerArea() {
 function ShopProductRoute() {
 	const { slug } = useParams();
 	return slug ? <ShopProductPage slug={slug} /> : <Navigate replace to="/shop" />;
+}
+
+function OrderDetailRoute() {
+	const { orderNumber } = useParams();
+	return orderNumber ? <OrderDetailPage orderNumber={orderNumber} /> : <Navigate replace to="/orders" />;
 }
 
 function CmsArea() {
@@ -65,7 +74,10 @@ export const router = createBrowserRouter([
 			{ path: "/search", element: <ShopSearchPage /> },
 			{ path: "/products/:slug", element: <ShopProductRoute /> },
 			{ path: "/cart", element: <CartPage /> },
-			{ path: "/account", element: <PhasePage title="Your account is on the route." description="Saved addresses and order history will arrive with the customer account phase." /> },
+			{ path: "/checkout", element: <CheckoutPage /> },
+			{ path: "/orders", element: <OrdersPage /> },
+			{ path: "/orders/:orderNumber", element: <OrderDetailRoute /> },
+			{ path: "/account", element: <AccountPage /> },
 		],
 	},
 	{

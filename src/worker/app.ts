@@ -10,10 +10,12 @@ import {
 } from "./auth/session";
 import { apiErrorResponse } from "./http/errors";
 import { createGuestRoutes } from "./modules/guest/guest-routes";
+import { createAddressRoutes } from "./modules/address/address-routes";
 import { createCartRoutes } from "./modules/cart/cart-routes";
 import { createCatalogRoutes } from "./modules/catalog/catalog-routes";
 import { createPublicCatalogRoutes } from "./modules/catalog/public-routes";
 import { createStoreRoutes } from "./modules/store/store-routes";
+import { createOrderRoutes } from "./modules/orders/order-routes";
 
 export function createApp() {
 	const app = new Hono<AppEnv>();
@@ -32,7 +34,9 @@ export function createApp() {
 	app.route("/api", createPublicCatalogRoutes());
 
 	app.use("/api/*", sessionMiddleware);
+	app.route("/api", createAddressRoutes());
 	app.route("/api", createCartRoutes());
+	app.route("/api", createOrderRoutes());
 	app.route("/api", createCatalogRoutes());
 	app.route("/api", createStoreRoutes());
 	app.get("/api/session", (c) =>

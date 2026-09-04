@@ -7,7 +7,7 @@ const customerLinks = [
 	{ label: "Shop", to: "/shop", icon: "●" },
 	{ label: "Search", to: "/search", icon: "⌕" },
 	{ label: "Cart", to: "/cart", icon: "▣" },
-	{ label: "Orders", to: "/account", icon: "◷" },
+	{ label: "Orders", to: "/orders", icon: "◷" },
 	{ label: "Account", to: "/account", icon: "☺" },
 ];
 

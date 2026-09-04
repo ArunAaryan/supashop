@@ -32,6 +32,7 @@ type StoreHourRow = {
 export type StoredStore = StoreProfileRow & {
 	hours: StoreHourRow[];
 	serviceablePostalCodes: string[];
+	closures: Array<{ id: string; startsOn: string; endsOn: string; reason: string }>;
 };
 
 type D1ResultWithChanges = { meta: { changes: number } };
@@ -44,7 +45,7 @@ export class StoreRepository {
 	constructor(private readonly database: D1Database) {}
 
 	async getStore(): Promise<StoredStore | null> {
-		const [profileResult, hoursResult, postalCodesResult] = await this.database.batch([
+		const [profileResult, hoursResult, postalCodesResult, closuresResult] = await this.database.batch([
 			this.database.prepare(
 				"SELECT owner_user_id, name, description, contact_name, phone, email, address_line_1, address_line_2, landmark, city, state, postal_code, directions_url, delivery_instructions, latitude, longitude, timezone, order_cutoff_minutes, version FROM store_profile WHERE singleton_key = 1",
 			),
@@ -53,6 +54,9 @@ export class StoreRepository {
 			),
 			this.database.prepare(
 				"SELECT postal_code FROM serviceable_postal_code WHERE active = 1 ORDER BY postal_code",
+			),
+			this.database.prepare(
+				"SELECT id, starts_on, ends_on, reason FROM store_closure ORDER BY starts_on, ends_on",
 			),
 		]);
 		const profile = (profileResult.results[0] ?? null) as StoreProfileRow | null;
@@ -63,6 +67,9 @@ export class StoreRepository {
 			hours: hoursResult.results as StoreHourRow[],
 			serviceablePostalCodes: (postalCodesResult.results as { postal_code: string }[]).map(
 				(row) => row.postal_code,
+			),
+			closures: (closuresResult.results as Array<{ id: string; starts_on: string; ends_on: string; reason: string }>).map(
+				(row) => ({ id: row.id, startsOn: row.starts_on, endsOn: row.ends_on, reason: row.reason }),
 			),
 		};
 	}
@@ -111,6 +118,7 @@ export class StoreRepository {
 				.bind(...profileValues.slice(0, 2), ownerUserId, ...profileValues.slice(2), temporaryVersion, now, now, expectedVersion),
 			...this.replaceHours(input.hours, temporaryVersion),
 			...this.replacePostalCodes(input.serviceablePostalCodes, temporaryVersion),
+			...this.replaceClosures(input.closures, temporaryVersion),
 			this.database
 				.prepare("UPDATE store_profile SET version = ? WHERE singleton_key = 1 AND version = ?")
 				.bind(expectedVersion + 1, temporaryVersion),
@@ -137,6 +145,20 @@ export class StoreRepository {
 						hour.closed,
 						temporaryVersion,
 					),
+			),
+		];
+	}
+
+	replaceClosures(closures: StoreSettingsInput["closures"], temporaryVersion: number): D1PreparedStatement[] {
+		const guard = "EXISTS (SELECT 1 FROM store_profile WHERE singleton_key = 1 AND version = ?)";
+		return [
+			this.database.prepare(`DELETE FROM store_closure WHERE ${guard}`).bind(temporaryVersion),
+			...closures.map((closure) =>
+				this.database
+					.prepare(
+						`INSERT INTO store_closure (id, starts_on, ends_on, reason, created_at, updated_at) SELECT ?, ?, ?, ?, ?, ? WHERE ${guard}`,
+					)
+					.bind(closure.id, closure.startsOn, closure.endsOn, closure.reason, Date.now(), Date.now(), temporaryVersion),
 			),
 		];
 	}

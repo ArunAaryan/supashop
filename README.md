@@ -2,21 +2,27 @@
 
 Supashop is a single-store delivery application built with React, Hono, Cloudflare Workers, D1, and R2. Each deployed instance represents exactly one physical store or warehouse. It has no organizations, tenants, or multi-store administration.
 
-## Phase 1–3 status
+## Phase 1–4 status
 
-Phases 1 through 3 establish the application, catalog, storefront, and cart foundation:
+Phases 1 through 4 establish the application, catalog, storefront, cart, and ordering foundation:
 
 - Better Auth email/password registration and sign-in, plus signed guest browser sessions.
 - Server-enforced CMS roles (`owner`, `admin`, `operations`, and `delivery`) and role-aware React shells.
-- A singleton store profile with contact information, address, serviceable postal codes, opening hours, and optimistic-concurrency updates.
+- A singleton store profile with contact information, address, serviceable postal codes, opening hours, exceptional closure dates, and optimistic-concurrency updates.
 - Flat categories and tags, product master records, sellable offerings, and server-driven CMS lists.
 - Ordered product galleries stored in R2, with up to five images per product and a 5 MiB limit per image.
 - Offering-level inventory with optimistic concurrency and an immutable manual-adjustment ledger.
 - Anonymous catalog browse, detail, filter, sort, pagination, and search APIs.
 - A responsive customer storefront with category browsing, URL-driven search and filters, product galleries, offering selection, and live availability.
 - Persistent registered and signed-guest carts with authoritative current pricing, visible price/stock changes, quantity controls, and guest-to-account merge after authentication.
+- Saved customer addresses with a single default per account.
+- Checkout-time serviceability validation against store hours, order cut-off, serviceable postal codes, and exceptional closure dates.
+- Atomic cash-on-delivery checkout that verifies current prices, activity, and stock server-side, with idempotency-key replay protection and stock deduction in the same D1 transaction as the order snapshot.
+- Immutable order snapshots (items, prices, and address), customer order history, and guest order access scoped to the originating browser session.
+- Customer cancellation while an order is `placed` or `confirmed`, with exactly-once stock restoration.
+- Reorder of previously purchased items with per-line availability handling.
 
-Checkout, order workflows, delivery proof, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
+Delivery proof (QR/PIN), the CMS order queue and fulfilment workflow, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
 
 ## Requirements
 
@@ -171,7 +177,7 @@ Anonymous catalog clients use:
 
 Only active products in active categories with at least one active offering are public. Product images accept JPEG, PNG, WebP, and AVIF content after MIME and signature validation.
 
-Customer routes are `/shop`, `/search`, `/products/:slug`, and `/cart`. Cart APIs are:
+Customer routes are `/shop`, `/search`, `/products/:slug`, `/cart`, `/checkout`, `/orders`, `/orders/:orderNumber`, and `/account`. Cart APIs are:
 
 - `GET /api/cart`
 - `POST /api/cart/items`
@@ -179,7 +185,22 @@ Customer routes are `/shop`, `/search`, `/products/:slug`, and `/cart`. Cart API
 - `DELETE /api/cart/items/:offeringId`
 - `POST /api/cart/merge`
 
-Cart writes never reserve or deduct stock. Each cart response recalculates current effective prices and availability, retaining changed or unavailable lines for customer review. Guest credentials are signed, expire after 30 days, and are merged into the registered cart after successful authentication.
+Checkout, order, and address APIs are:
+
+- `POST /api/checkout` (idempotency-key header required)
+- `GET /api/orders`
+- `GET /api/orders/:orderNumber`
+- `POST /api/orders/:orderNumber/cancel`
+- `POST /api/orders/:orderNumber/reorder`
+- `GET /api/addresses`
+- `POST /api/addresses`
+- `GET /api/addresses/:addressId`
+- `PUT /api/addresses/:addressId`
+- `DELETE /api/addresses/:addressId`
+
+Cart writes never reserve or deduct stock. Each cart response recalculates current effective prices and availability, retaining changed or unavailable lines for customer review. Guest credentials are signed, expire after 30 days, and are merged into the registered cart (and any guest orders claimed) after successful authentication.
+
+Checkout validates serviceability, re-reads active offerings, and computes authoritative prices and totals server-side. A repeated checkout with the same idempotency key returns the original order instead of placing a second one; price or availability changes return a `409` with the affected offerings and current values. Stock deduction and cancellation restoration write immutable inventory movements and are atomic and idempotent. Historical orders are snapshots that never depend on mutable catalog text or prices.
 
 ## References
 

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -28,6 +28,7 @@ const configuredStore = {
 	orderCutoffMinutes: 45,
 	hours: Array.from({ length: 7 }, (_, weekday) => ({ weekday, opensMinute: 540, closesMinute: 1260, closed: false })),
 	serviceablePostalCodes: ["560001", "560002"],
+	closures: [],
 };
 
 function renderPage() {
@@ -135,5 +136,30 @@ describe("StoreSettingsPage", () => {
 
 		expect(await screen.findByText(/reload and retry/i)).toBeInTheDocument();
 		expect(screen.getByLabelText(/store name/i)).toHaveValue("My unsaved name");
+	});
+
+	it("adds and saves a closure with an editable reason", async () => {
+		const user = userEvent.setup();
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(new Response(JSON.stringify(configuredStore)))
+			.mockResolvedValueOnce(new Response(JSON.stringify({ ...configuredStore, version: 8, closures: [{ id: "closure-1", startsOn: "2026-12-24", endsOn: "2026-12-26", reason: "Holiday" }] })));
+		vi.stubGlobal("fetch", fetchMock);
+		renderPage();
+
+		await screen.findByDisplayValue("SupaShop Market");
+		await user.click(screen.getByRole("button", { name: /add closure/i }));
+		const dates = screen.getAllByLabelText(/starts on|ends on/i) as HTMLInputElement[];
+		expect(dates).toHaveLength(2);
+
+		fireEvent.change(screen.getByLabelText(/starts on/i), { target: { value: "2026-12-24" } });
+		fireEvent.change(screen.getByLabelText(/ends on/i), { target: { value: "2026-12-26" } });
+		await user.type(screen.getByLabelText(/reason/i), "Holiday");
+
+		await user.click(screen.getByRole("button", { name: /save store settings/i }));
+		await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+		expect(fetchMock).toHaveBeenLastCalledWith("/api/cms/store", expect.objectContaining({
+			method: "PUT",
+			body: expect.stringContaining('"startsOn":"2026-12-24"'),
+		}));
 	});
 });
