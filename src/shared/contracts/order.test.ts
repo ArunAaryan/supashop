@@ -3,9 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
 	checkoutInputSchema,
 	customerAddressInputSchema,
+	customerOrderDetailSchema,
 	deleteCustomerAddressInputSchema,
+	deliveryProofResponseSchema,
 	orderDetailSchema,
 	orderSchema,
+	orderTransitionInputSchema,
+	verifyDeliveryInputSchema,
 } from "./order";
 
 const address = {
@@ -20,6 +24,14 @@ const address = {
 	latitude: null,
 	longitude: null,
 	deliveryInstructions: " Leave with security ",
+};
+
+const detail = {
+	id: "order-1", orderNumber: "ord_u5NrWL4i6aQYVbScRM5T7z_e", status: "placed", paymentStatus: "pending", currency: "INR",
+	subtotalMinor: 900, deliveryFeeMinor: 50, totalMinor: 950, itemCount: 2, placedAt: 123, expectedDeliveryAt: null, cancelledAt: null, customerCanCancel: true, version: 1,
+	address: { orderId: "order-1", ...address },
+	items: [{ offeringId: "offering-1", productId: "product-1", productCode: "MILK-1", productName: "Milk", offeringSku: "MILK-1L", offeringLabel: "1 litre", packQuantity: 1, weightValue: null, weightUnit: null, listPriceMinor: 500, discountType: "fixed", discountValue: 50, effectiveUnitPriceMinor: 450, quantity: 2, lineTotalMinor: 900 }],
+	statusHistory: [{ id: "history-1", fromStatus: null, toStatus: "placed", reason: null, actorUserId: null, createdAt: 123 }],
 };
 
 describe("order contracts", () => {
@@ -59,14 +71,49 @@ describe("order contracts", () => {
 	});
 
 	it("requires order item snapshot arithmetic to produce the order subtotal", () => {
-		const detail = {
-			id: "order-1", orderNumber: "ord_u5NrWL4i6aQYVbScRM5T7z_e", status: "placed", paymentStatus: "pending", currency: "INR",
-			subtotalMinor: 900, deliveryFeeMinor: 50, totalMinor: 950, itemCount: 2, placedAt: 123, expectedDeliveryAt: null, cancelledAt: null, customerCanCancel: true, version: 1,
-			address: { orderId: "order-1", ...address },
-			items: [{ offeringId: "offering-1", productId: "product-1", productCode: "MILK-1", productName: "Milk", offeringSku: "MILK-1L", offeringLabel: "1 litre", packQuantity: 1, weightValue: null, weightUnit: null, listPriceMinor: 500, discountType: "fixed", discountValue: 50, effectiveUnitPriceMinor: 450, quantity: 2, lineTotalMinor: 900 }],
-			statusHistory: [{ id: "history-1", fromStatus: null, toStatus: "placed", reason: null, actorUserId: null, createdAt: 123 }],
-		};
 		expect(orderDetailSchema.parse(detail)).toMatchObject({ subtotalMinor: 900 });
 		expect(orderDetailSchema.safeParse({ ...detail, subtotalMinor: 899, totalMinor: 949 }).success).toBe(false);
+	});
+
+	describe("order transition contracts", () => {
+		it("requires a reason for cancel and reject transitions", () => {
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "cancelled" }).success).toBe(false);
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "rejected" }).success).toBe(false);
+			expect(orderTransitionInputSchema.parse({ toStatus: "cancelled", reason: "Out of stock" })).toEqual({ toStatus: "cancelled", reason: "Out of stock" });
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "preparing" }).success).toBe(true);
+		});
+
+		it("requires an expected delivery time when acknowledging", () => {
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "confirmed" }).success).toBe(false);
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "confirmed", expectedDeliveryAt: null }).success).toBe(false);
+			expect(orderTransitionInputSchema.safeParse({ toStatus: "confirmed", expectedDeliveryAt: 123 }).success).toBe(true);
+		});
+	});
+
+	describe("delivery proof contracts", () => {
+		it("requires exactly one of token or pin", () => {
+			expect(verifyDeliveryInputSchema.safeParse({ token: "abcdef1234567890" }).success).toBe(true);
+			expect(verifyDeliveryInputSchema.safeParse({ pin: "123456" }).success).toBe(true);
+			expect(verifyDeliveryInputSchema.safeParse({}).success).toBe(false);
+			expect(verifyDeliveryInputSchema.safeParse({ token: "abcdef1234567890", pin: "123456" }).success).toBe(false);
+		});
+
+		it("rejects malformed pins", () => {
+			expect(verifyDeliveryInputSchema.safeParse({ pin: "12345" }).success).toBe(false);
+			expect(verifyDeliveryInputSchema.safeParse({ pin: "12345a" }).success).toBe(false);
+			expect(verifyDeliveryInputSchema.safeParse({ pin: " 	123456 " }).success).toBe(false);
+		});
+
+		it("accepts a valid delivery proof response", () => {
+			expect(deliveryProofResponseSchema.parse({ orderId: "order-1", qrToken: "abcdef1234567890", pin: "123456", expiresAt: 123 })).toEqual({ orderId: "order-1", qrToken: "abcdef1234567890", pin: "123456", expiresAt: 123 });
+			expect(deliveryProofResponseSchema.safeParse({ orderId: "order-1", qrToken: "short", pin: "123456", expiresAt: 123 }).success).toBe(false);
+		});
+
+		it("extends the customer-facing detail without mutating the base detail schema", () => {
+			const proof = { orderId: "order-1", qrToken: "abcdef1234567890", pin: "123456", expiresAt: 456 };
+			expect(orderDetailSchema.safeParse({ ...detail, deliveryProof: proof }).success).toBe(false);
+			expect(customerOrderDetailSchema.parse({ ...detail, deliveryProof: proof })).toMatchObject({ status: "placed", deliveryProof: proof });
+			expect(customerOrderDetailSchema.parse({ ...detail, deliveryProof: null })).toMatchObject({ deliveryProof: null });
+		});
 	});
 });

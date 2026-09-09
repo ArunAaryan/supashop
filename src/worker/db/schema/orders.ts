@@ -187,3 +187,22 @@ export const checkoutIdempotency = sqliteTable(
 		check("checkout_idempotency_request_hash_check", sql`length(${table.requestHash}) = 64 and ${table.requestHash} not glob '*[^0-9a-f]*'`),
 	],
 );
+
+export const deliveryProof = sqliteTable(
+	"delivery_proof",
+	{
+		orderId: text("order_id").primaryKey().references(() => commerceOrder.id, { onDelete: "cascade" }),
+		tokenHash: text("token_hash").notNull(),
+		pinHash: text("pin_hash").notNull(),
+		tokenEnc: text("token_enc").notNull(),
+		pinEnc: text("pin_enc").notNull(),
+		expiresAt: integer("expires_at", { mode: "timestamp_ms" }).notNull(),
+		consumedAt: integer("consumed_at", { mode: "timestamp_ms" }),
+		createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
+	},
+	(table) => [
+		check("delivery_proof_token_hash_check", sql`length(${table.tokenHash}) = 64 and ${table.tokenHash} not glob '*[^0-9a-f]*'`),
+		check("delivery_proof_pin_hash_check", sql`length(${table.pinHash}) = 64 and ${table.pinHash} not glob '*[^0-9a-f]*'`),
+		check("delivery_proof_expiry_check", sql`${table.expiresAt} > ${table.createdAt}`),
+	],
+);

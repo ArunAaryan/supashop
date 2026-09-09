@@ -7,6 +7,7 @@ import {
 	isOpaqueOrderNumber,
 	orderStatusValues,
 	paymentStatusValues,
+	requireTransitionReason,
 } from "../domain/order";
 import { discountTypes } from "../domain/discount";
 import { weightUnits } from "./catalog";
@@ -313,6 +314,47 @@ export const reorderResultSchema = z
 
 export const cancelOrderResponseSchema = orderDetailSchema;
 
+export const orderTransitionInputSchema = z
+	.object({
+		toStatus: z.enum(orderStatusValues),
+		reason: z.string().trim().min(1).max(500).optional(),
+		expectedDeliveryAt: timestampSchema.nullable().optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		if (requireTransitionReason(value.toStatus) && !value.reason) {
+			ctx.addIssue({ code: "custom", path: ["reason"], message: "A reason is required for this transition" });
+		}
+		if (value.toStatus === "confirmed" && !value.expectedDeliveryAt) {
+			ctx.addIssue({ code: "custom", path: ["expectedDeliveryAt"], message: "An expected delivery time is required to acknowledge" });
+		}
+	});
+
+export const verifyDeliveryInputSchema = z
+	.object({
+		token: z.string().trim().min(16).max(256).optional(),
+		pin: z.string().regex(/^\d{6}$/).optional(),
+	})
+	.strict()
+	.superRefine((value, ctx) => {
+		if (Boolean(value.token) === Boolean(value.pin)) {
+			ctx.addIssue({ code: "custom", path: ["token"], message: "Provide exactly one of token or pin" });
+		}
+	});
+
+export const deliveryProofResponseSchema = z.object({
+	orderId: idSchema,
+	qrToken: z.string().min(16).max(256),
+	pin: z.string().regex(/^\d{6}$/),
+	expiresAt: timestampSchema,
+});
+
+// IMPORTANT: do NOT mutate the existing orderDetailSchema. Add a SEPARATE
+// customer-facing detail schema so existing Phase 4 code/tests keep passing:
+export const customerOrderDetailSchema = orderDetailSchema.extend({
+	deliveryProof: deliveryProofResponseSchema.nullable().optional(),
+});
+
 export const inventoryMovementTypeSchema = z.enum(inventoryMovementTypeValues);
 
 export function orderIsCustomerCancellable(status: z.infer<typeof orderStatusSchema>) {
@@ -336,3 +378,7 @@ export type CancelOrderInput = z.infer<typeof cancelOrderInputSchema>;
 export type CancelOrderResponse = z.infer<typeof cancelOrderResponseSchema>;
 export type ReorderLineResult = z.infer<typeof reorderLineResultSchema>;
 export type ReorderResult = z.infer<typeof reorderResultSchema>;
+export type OrderTransitionInput = z.infer<typeof orderTransitionInputSchema>;
+export type VerifyDeliveryInput = z.infer<typeof verifyDeliveryInputSchema>;
+export type DeliveryProofResponse = z.infer<typeof deliveryProofResponseSchema>;
+export type CustomerOrderDetail = z.infer<typeof customerOrderDetailSchema>;

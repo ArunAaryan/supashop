@@ -98,4 +98,24 @@ describe("order schema invariants", () => {
 				.run(),
 		).rejects.toThrow();
 	});
+
+	it("stores delivery proofs with validated token/pin hashes and deletes them with their order", async () => {
+		const userId = await insertUser();
+		const orderId = await insertOrder({ userId });
+		const now = Date.now();
+		const hex = "a".repeat(64);
+		const insertProof = (tokenHash: string, pinHash: string, expiresAt: number, createdAt: number) => env.DB.prepare(
+			"INSERT INTO delivery_proof (order_id, token_hash, pin_hash, token_enc, pin_enc, expires_at, created_at) VALUES (?, ?, ?, 'abcdef', '123456', ?, ?)",
+		).bind(orderId, tokenHash, pinHash, expiresAt, createdAt).run();
+		await expect(insertProof(hex, hex, now + 60_000, now)).resolves.toMatchObject({ success: true });
+		await expect(insertProof("a".repeat(63), hex, now + 60_000, now)).rejects.toThrow();
+		await expect(insertProof(hex.toUpperCase(), hex, now + 60_000, now)).rejects.toThrow();
+		await expect(insertProof(hex, hex, now, now)).rejects.toThrow();
+		// Creating a second proof for the same order conflicts on the primary key (order_id).
+		await expect(insertProof(hex, hex, now + 120_000, now + 10_000)).rejects.toThrow();
+		// Deleting the order cascades and removes its delivery proof.
+		await expect(env.DB.prepare("DELETE FROM commerce_order WHERE id = ?").bind(orderId).run()).resolves.toMatchObject({ success: true });
+		const remaining = await env.DB.prepare("SELECT COUNT(*) AS count FROM delivery_proof WHERE order_id = ?").bind(orderId).first<{ count: number }>();
+		expect(remaining?.count).toBe(0);
+	});
 });
