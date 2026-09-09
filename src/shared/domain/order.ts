@@ -41,7 +41,7 @@ const cmsForward: Record<OrderStatus, OrderStatus[]> = {
 	confirmed: ["preparing", "cancelled", "rejected"],
 	preparing: ["ready", "cancelled", "rejected"],
 	ready: ["out_for_delivery", "cancelled", "rejected"],
-	out_for_delivery: ["delivered", "cancelled", "rejected"],
+	out_for_delivery: ["cancelled", "rejected"],
 	delivered: [],
 	cancelled: [],
 	rejected: [],

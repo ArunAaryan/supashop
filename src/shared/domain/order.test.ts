@@ -33,7 +33,8 @@ describe("order transitions", () => {
 		expect(canTransitionOrder("confirmed", "preparing", "cms")).toBe(true);
 		expect(canTransitionOrder("preparing", "ready", "cms")).toBe(true);
 		expect(canTransitionOrder("ready", "out_for_delivery", "cms")).toBe(true);
-		expect(canTransitionOrder("out_for_delivery", "delivered", "cms")).toBe(true);
+		// Delivered is only reachable through one-time proof verification, never a CMS advance.
+		expect(canTransitionOrder("out_for_delivery", "delivered", "cms")).toBe(false);
 	});
 
 	it("allows customer cancel only while placed or confirmed", () => {
