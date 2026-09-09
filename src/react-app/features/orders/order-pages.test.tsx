@@ -56,4 +56,17 @@ describe("OrderDetailPage", () => {
 		await user.click(screen.getByRole("link", { name: /view cart/i }));
 		expect(screen.getByText("Cart destination")).toBeInTheDocument();
 	});
+
+	it("shows the delivery QR code and PIN while out for delivery", async () => {
+		vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+			...detail,
+			status: "out_for_delivery",
+			customerCanCancel: false,
+			deliveryProof: { orderId: "order-1", qrToken: "a".repeat(64), pin: "123456", expiresAt: 1_700_000_100_000 },
+		}))));
+		renderPage(<OrderDetailPage orderNumber={orderNumber} />, `/orders/${orderNumber}`);
+		await screen.findByRole("heading", { name: new RegExp(orderNumber) });
+		expect(screen.getByText("123456")).toBeInTheDocument();
+		expect(await screen.findByAltText("Delivery verification QR code")).toBeInTheDocument();
+	});
 });

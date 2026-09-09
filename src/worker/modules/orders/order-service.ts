@@ -2,6 +2,7 @@ import {
 	cancelOrderInputSchema,
 	checkoutInputSchema,
 	cmsOrderListQuerySchema,
+	customerOrderDetailSchema,
 	orderDetailSchema,
 	orderListQuerySchema,
 	orderListResponseSchema,
@@ -9,6 +10,7 @@ import {
 	reorderResultSchema,
 	verifyDeliveryInputSchema,
 	type CheckoutInput,
+	type CustomerOrderDetail,
 	type Order,
 	type OrderDetail,
 	type OrderItem,
@@ -18,6 +20,7 @@ import {
 import { evaluateFulfillmentAvailability } from "../../../shared/domain/fulfillment";
 import { canCustomerCancelOrder, canTransitionOrder } from "../../../shared/domain/order";
 import {
+	decryptDeliveryProof,
 	deriveProofKey,
 	generateDeliveryProof,
 	verifyProofValue,
@@ -335,10 +338,30 @@ export class OrderService {
 		});
 	}
 
-	async detail(owner: CustomerPrincipal, orderNumber: string): Promise<OrderDetail> {
+	async detail(owner: CustomerPrincipal, orderNumber: string): Promise<CustomerOrderDetail> {
 		const detail = await this.repository.getOrder(owner, orderNumber);
 		if (!detail) throw new ApiError("NOT_FOUND", "Order not found");
-		return toDetail(detail);
+		return this.toCustomerDetail(detail);
+	}
+
+	private async toCustomerDetail(row: StoredOrderDetail): Promise<CustomerOrderDetail> {
+		const base = toDetail(row);
+		if (row.order.status !== "out_for_delivery") {
+			return customerOrderDetailSchema.parse({ ...base, deliveryProof: null });
+		}
+		const proof = await this.repository.getDeliveryProof(row.order.id);
+		if (!proof) return customerOrderDetailSchema.parse({ ...base, deliveryProof: null });
+		const key = await deriveProofKey(this.proofSecret);
+		const raw = await decryptDeliveryProof(key, { tokenEnc: proof.token_enc, pinEnc: proof.pin_enc });
+		return customerOrderDetailSchema.parse({
+			...base,
+			deliveryProof: {
+				orderId: proof.order_id,
+				qrToken: raw.token,
+				pin: raw.pin,
+				expiresAt: proof.expires_at,
+			},
+		});
 	}
 
 	async cancel(owner: CustomerPrincipal, orderNumber: string, payload: unknown): Promise<OrderDetail> {

@@ -5,13 +5,14 @@ import {
 	cancelOrderResponseSchema,
 	customerAddressInputSchema,
 	customerAddressSchema,
-	orderDetailSchema,
+	customerOrderDetailSchema,
 	orderListQuerySchema,
 	orderListResponseSchema,
 	reorderResultSchema,
 	updateCustomerAddressInputSchema,
 	type CancelOrderInput,
 	type CustomerAddressInput,
+	type CustomerOrderDetail,
 	type OrderDetail,
 	type OrderListQuery,
 	type OrderListResponse,
@@ -57,8 +58,8 @@ async function requestOrders(query: OrderListQuery): Promise<OrderListResponse> 
 	return parse(orderListResponseSchema, await apiRequest<unknown>(`/api/orders?${queryString(query)}`), "order history");
 }
 
-async function requestOrder(orderNumber: string): Promise<OrderDetail> {
-	return parse(orderDetailSchema, await apiRequest<unknown>(`/api/orders/${encodeURIComponent(orderNumber)}`), "order");
+async function requestOrder(orderNumber: string): Promise<CustomerOrderDetail> {
+	return parse(customerOrderDetailSchema, await apiRequest<unknown>(`/api/orders/${encodeURIComponent(orderNumber)}`), "order");
 }
 
 async function cancelOrder(orderNumber: string, input: CancelOrderInput): Promise<OrderDetail> {
