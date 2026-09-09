@@ -377,13 +377,13 @@ export class OrderRepository {
 
 	async transitionOrder(value: TransitionCommit): Promise<boolean> {
 		const newVersion = value.expectedVersion + 1;
-		const cancelledAt = value.toStatus === "cancelled" || value.toStatus === "rejected" ? value.now : null;
+		const cancelledAt = value.toStatus === "cancelled" ? value.now : null;
 		const statements: D1PreparedStatement[] = [
 			this.database.prepare(
 				`UPDATE commerce_order SET
 				 status = ?,
 				 expected_delivery_at = CASE WHEN ? = 'confirmed' THEN ? ELSE expected_delivery_at END,
-				 cancelled_at = CASE WHEN ? IN ('cancelled','rejected') THEN ? ELSE cancelled_at END,
+				 cancelled_at = CASE WHEN ? = 'cancelled' THEN ? ELSE cancelled_at END,
 				 version = version + 1,
 				 updated_at = ?
 				 WHERE id = ? AND version = ? AND status = ?`,

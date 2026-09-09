@@ -2,6 +2,7 @@ import { env, exports } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 
 import { signInAs } from "../../test/catalog-fixtures";
+import { decryptDeliveryProof, deriveProofKey } from "./delivery-proof";
 
 function cookieFrom(response: Response): string {
 	const cookie = response.headers.get("set-cookie")?.split(";")[0];
@@ -171,5 +172,132 @@ describe("checkout and customer order routes", () => {
 		expect(reorder.status).toBe(200);
 		expect(await reorder.json()).toMatchObject({ lines: [{ offeringId, requestedQuantity: 2, addedQuantity: 1, status: "added" }] });
 		expect(await env.DB.prepare("SELECT stock_quantity FROM offering WHERE id = ?").bind(offeringId).first()).toEqual({ stock_quantity: 1 });
+	});
+});
+
+async function placeOrderForCms() {
+	await configureCheckoutStore();
+	const { offeringId } = await offeringFixture();
+	const guest = await guestCookie();
+	await request("/api/cart/items", guest, "POST", { offeringId, quantity: 1 });
+	const placed = await request("/api/checkout", guest, "POST", await checkoutPayload(guest, offeringId, 1), `checkout-cms-${crypto.randomUUID()}`);
+	expect(placed.status).toBe(201);
+	const order = await placed.json() as { id: string; orderNumber: string };
+	return { ...order, offeringId };
+}
+
+async function cmsTransition(cookie: string, orderNumber: string, payload: Record<string, unknown>) {
+	return request(`/api/cms/orders/${orderNumber}/transition`, cookie, "POST", payload);
+}
+
+async function acknowledge(cookie: string, orderNumber: string) {
+	return cmsTransition(cookie, orderNumber, { toStatus: "confirmed", expectedDeliveryAt: Date.now() + 3_600_000 });
+}
+
+async function advanceToOutForDelivery(cookie: string, orderNumber: string) {
+	expect((await acknowledge(cookie, orderNumber)).status).toBe(200);
+	expect((await cmsTransition(cookie, orderNumber, { toStatus: "preparing" })).status).toBe(200);
+	expect((await cmsTransition(cookie, orderNumber, { toStatus: "ready" })).status).toBe(200);
+	expect((await cmsTransition(cookie, orderNumber, { toStatus: "out_for_delivery" })).status).toBe(200);
+}
+
+describe("CMS order operations and delivery verification", () => {
+	it("denies customer access to CMS order routes", async () => {
+		const guest = await guestCookie();
+		const denied = await request("/api/cms/orders", guest);
+		expect([401, 403]).toContain(denied.status);
+	});
+
+	it("lists orders and acknowledges with an ETA", async () => {
+		const { orderNumber } = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		const list = await request(`/api/cms/orders?search=${orderNumber}`, operations.cookie);
+		expect(list.status).toBe(200);
+		expect(await list.json()).toMatchObject({ totalItems: 1, totalPages: 1 });
+		const acknowledged = await request(
+			`/api/cms/orders/${orderNumber}/transition`,
+			operations.cookie,
+			"POST",
+			{ toStatus: "confirmed", expectedDeliveryAt: Date.now() + 3_600_000 },
+		);
+		expect(acknowledged.status).toBe(200);
+		const body = await acknowledged.json() as { status: string; expectedDeliveryAt: number; statusHistory: unknown[] };
+		expect(body.status).toBe("confirmed");
+		expect(body.expectedDeliveryAt).toBeGreaterThan(Date.now());
+		expect(body.statusHistory).toHaveLength(2);
+	});
+
+	it("rejects an order and restores stock exactly once", async () => {
+		const { orderNumber, offeringId } = await placeOrderForCms();
+		expect((await env.DB.prepare("SELECT stock_quantity FROM offering WHERE id = ?").bind(offeringId).first())).toEqual({ stock_quantity: 4 });
+		const operations = await signInAs("operations");
+		const rejected = await cmsTransition(operations.cookie, orderNumber, { toStatus: "rejected", reason: "Out of area" });
+		expect(rejected.status).toBe(200);
+		expect(await rejected.json()).toMatchObject({ status: "rejected" });
+		expect(await env.DB.prepare("SELECT stock_quantity FROM offering WHERE id = ?").bind(offeringId).first()).toEqual({ stock_quantity: 5 });
+		expect(await env.DB.prepare(
+			"SELECT count(*) AS total FROM inventory_movement WHERE offering_id = ? AND movement_type = 'cancellation_restoration'",
+		).bind(offeringId).first()).toEqual({ total: 1 });
+		expect((await cmsTransition(operations.cookie, orderNumber, { toStatus: "rejected", reason: "Again" })).status).toBe(409);
+	});
+
+	it("advances an order through preparing, ready, out_for_delivery", async () => {
+		const { id, orderNumber } = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		expect((await acknowledge(operations.cookie, orderNumber)).status).toBe(200);
+		expect((await cmsTransition(operations.cookie, orderNumber, { toStatus: "preparing" })).status).toBe(200);
+		expect((await cmsTransition(operations.cookie, orderNumber, { toStatus: "ready" })).status).toBe(200);
+		expect((await cmsTransition(operations.cookie, orderNumber, { toStatus: "out_for_delivery" })).status).toBe(200);
+		expect(await env.DB.prepare("SELECT order_id FROM delivery_proof WHERE order_id = ?").bind(id).first()).toEqual({ order_id: id });
+	});
+
+	it("verifies delivery by token and returns delivered idempotently", async () => {
+		const { orderNumber } = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		await advanceToOutForDelivery(operations.cookie, orderNumber);
+		const orderRow = await env.DB.prepare("SELECT id FROM commerce_order WHERE order_number = ?").bind(orderNumber).first<{ id: string }>();
+		const orderId = orderRow!.id;
+		const key = await deriveProofKey("test-only-secret-that-is-long-enough-for-better-auth");
+		const proof = await env.DB.prepare("SELECT token_enc, pin_enc FROM delivery_proof WHERE order_id = ?").bind(orderId).first<{ token_enc: string; pin_enc: string }>();
+		const raw = proof ? await decryptDeliveryProof(key, { tokenEnc: proof.token_enc, pinEnc: proof.pin_enc }) : null;
+		expect(raw).not.toBeNull();
+		const delivery = await signInAs("delivery");
+		const verify = await request(`/api/cms/delivery/orders/${orderNumber}/verify`, delivery.cookie, "POST", { token: raw!.token });
+		expect(verify.status).toBe(200);
+		expect(await verify.json()).toMatchObject({ status: "delivered", paymentStatus: "collected" });
+		expect((await request(`/api/cms/delivery/orders/${orderNumber}/verify`, delivery.cookie, "POST", { token: raw!.token })).status).toBe(200);
+		expect((await request(`/api/cms/delivery/orders/${orderNumber}/verify`, delivery.cookie, "POST", { token: raw!.token }).then((response) => response.json() as Promise<{ status: string }>)).status).toBe("delivered");
+		expect((await env.DB.prepare("SELECT consumed_at FROM delivery_proof WHERE order_id = ?").bind(orderId).first())).not.toEqual({ consumed_at: null });
+	});
+
+	it("rejects an invalid pin", async () => {
+		const { orderNumber } = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		await advanceToOutForDelivery(operations.cookie, orderNumber);
+		const delivery = await signInAs("delivery");
+		expect((await request(`/api/cms/delivery/orders/${orderNumber}/verify`, delivery.cookie, "POST", { pin: "000000" })).status).toBe(409);
+	});
+
+	it("scopes the delivery queue to out_for_delivery", async () => {
+		const placed = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		await advanceToOutForDelivery(operations.cookie, placed.orderNumber);
+		const fresh = await placeOrderForCms();
+		const delivery = await signInAs("delivery");
+		const queue = await request("/api/cms/delivery/orders", delivery.cookie);
+		expect(queue.status).toBe(200);
+		const body = await queue.json() as { totalItems: number; items: Array<{ orderNumber: string }> };
+		expect(body.items.some((item) => item.orderNumber === placed.orderNumber)).toBe(true);
+		expect(body.items.some((item) => item.orderNumber === fresh.orderNumber)).toBe(false);
+		expect((await request("/api/cms/orders", delivery.cookie)).status).toBe(403);
+	});
+
+	it("writes audit rows for transitions", async () => {
+		const { orderNumber } = await placeOrderForCms();
+		const operations = await signInAs("operations");
+		expect((await acknowledge(operations.cookie, orderNumber)).status).toBe(200);
+		expect((await cmsTransition(operations.cookie, orderNumber, { toStatus: "rejected", reason: "Duplicate" })).status).toBe(200);
+		const count = await env.DB.prepare("SELECT count(*) AS total FROM audit_log").first<{ total: number }>();
+		expect(Number(count?.total ?? 0)).toBeGreaterThanOrEqual(2);
 	});
 });

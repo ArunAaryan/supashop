@@ -252,6 +252,15 @@ export const orderListQuerySchema = z
 	})
 	.strict();
 
+export const cmsOrderListQuerySchema = z
+	.object({
+		page: z.coerce.number().int().min(1).default(1),
+		pageSize: z.coerce.number().int().min(1).max(50).default(20),
+		status: orderStatusSchema.optional(),
+		search: z.string().trim().max(200).optional(),
+	})
+	.strict();
+
 export const orderListResponseSchema = z
 	.object({
 		items: z.array(orderSchema),
@@ -382,3 +391,4 @@ export type OrderTransitionInput = z.infer<typeof orderTransitionInputSchema>;
 export type VerifyDeliveryInput = z.infer<typeof verifyDeliveryInputSchema>;
 export type DeliveryProofResponse = z.infer<typeof deliveryProofResponseSchema>;
 export type CustomerOrderDetail = z.infer<typeof customerOrderDetailSchema>;
+export type CmsOrderListQuery = z.infer<typeof cmsOrderListQuerySchema>;

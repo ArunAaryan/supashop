@@ -1,10 +1,13 @@
 import {
 	cancelOrderInputSchema,
 	checkoutInputSchema,
+	cmsOrderListQuerySchema,
 	orderDetailSchema,
 	orderListQuerySchema,
 	orderListResponseSchema,
+	orderTransitionInputSchema,
 	reorderResultSchema,
+	verifyDeliveryInputSchema,
 	type CheckoutInput,
 	type Order,
 	type OrderDetail,
@@ -13,7 +16,12 @@ import {
 	type ReorderLineResult,
 } from "../../../shared/contracts/order";
 import { evaluateFulfillmentAvailability } from "../../../shared/domain/fulfillment";
-import { canCustomerCancelOrder } from "../../../shared/domain/order";
+import { canCustomerCancelOrder, canTransitionOrder } from "../../../shared/domain/order";
+import {
+	deriveProofKey,
+	generateDeliveryProof,
+	verifyProofValue,
+} from "./delivery-proof";
 import type { CustomerPrincipal } from "../../auth/customer-principal";
 import { ApiError } from "../../http/errors";
 import { StoreRepository } from "../store/store-repository";
@@ -153,7 +161,106 @@ export class OrderService {
 	constructor(
 		private readonly repository: OrderRepository,
 		private readonly stores: StoreRepository,
+		private readonly proofSecret: string,
 	) {}
+
+	async listCms(queryValue: unknown) {
+		const query = validate(cmsOrderListQuerySchema, queryValue, "Order query is invalid");
+		const page = await this.repository.listCmsOrders({
+			page: query.page,
+			pageSize: query.pageSize,
+			status: query.status,
+			search: query.search,
+		});
+		return orderListResponseSchema.parse({
+			items: page.items.map(toOrder),
+			page: query.page,
+			pageSize: query.pageSize,
+			totalItems: page.totalItems,
+			totalPages: Math.ceil(page.totalItems / query.pageSize),
+		});
+	}
+
+	async cmsDetail(orderNumber: string): Promise<OrderDetail> {
+		const detail = await this.repository.getCmsOrder(orderNumber);
+		if (!detail) throw new ApiError("NOT_FOUND", "Order not found");
+		return toDetail(detail);
+	}
+
+	async transition(orderNumber: string, payload: unknown, actorUserId: string): Promise<OrderDetail> {
+		const input = validate(orderTransitionInputSchema, payload, "Transition is invalid");
+		const current = await this.repository.getCmsOrder(orderNumber);
+		if (!current) throw new ApiError("NOT_FOUND", "Order not found");
+		if (!canTransitionOrder(current.order.status, input.toStatus, "cms")) {
+			throw new ApiError("CONFLICT", `Cannot transition from ${current.order.status} to ${input.toStatus}`);
+		}
+		const now = Date.now();
+		let proof: Awaited<ReturnType<typeof generateDeliveryProof>> | undefined;
+		if (input.toStatus === "out_for_delivery") {
+			proof = await generateDeliveryProof(await deriveProofKey(this.proofSecret), current.order.id, now);
+		}
+		const stock = input.toStatus === "cancelled" || input.toStatus === "rejected"
+			? await this.repository.cancellationStock(current.order.id)
+			: null;
+		const changed = await this.repository.transitionOrder({
+			orderId: current.order.id,
+			currentStatus: current.order.status,
+			expectedVersion: current.order.version,
+			toStatus: input.toStatus,
+			reason: input.reason ?? null,
+			actorUserId,
+			expectedDeliveryAt: input.expectedDeliveryAt ?? null,
+			now,
+			stock,
+			proof,
+		});
+		if (!changed) throw new ApiError("CONFLICT", "Order changed; reload and retry");
+		const updated = await this.repository.getCmsOrder(orderNumber);
+		if (!updated) throw new Error("Translated order could not be loaded");
+		return toDetail(updated);
+	}
+
+	async activeDeliveries() {
+		const page = await this.repository.listCmsOrders({ page: 1, pageSize: 50, status: "out_for_delivery" });
+		return orderListResponseSchema.parse({
+			items: page.items.map(toOrder),
+			page: 1,
+			pageSize: 50,
+			totalItems: page.totalItems,
+			totalPages: Math.ceil(page.totalItems / 50),
+		});
+	}
+
+	async verifyDelivery(orderNumber: string, payload: unknown, actorUserId: string): Promise<OrderDetail> {
+		const input = validate(verifyDeliveryInputSchema, payload, "Delivery proof is invalid");
+		const current = await this.repository.getCmsOrder(orderNumber);
+		if (!current) throw new ApiError("NOT_FOUND", "Order not found");
+		if (current.order.status === "delivered") return toDetail(current);
+		if (current.order.status !== "out_for_delivery") throw new ApiError("CONFLICT", "This order is not out for delivery");
+		const proof = await this.repository.getDeliveryProof(current.order.id);
+		if (!proof) throw new ApiError("CONFLICT", "No delivery proof is available");
+		if (proof.consumed_at !== null) throw new ApiError("CONFLICT", "Delivery proof has already been used");
+		if (proof.expires_at <= Date.now()) throw new ApiError("CONFLICT", "Delivery proof has expired");
+		const valid = await verifyProofValue(
+			{ tokenHash: proof.token_hash, pinHash: proof.pin_hash },
+			{ token: input.token, pin: input.pin },
+		);
+		if (!valid) throw new ApiError("CONFLICT", "Delivery proof is invalid");
+		const changed = await this.repository.completeDelivery({
+			orderId: current.order.id,
+			expectedVersion: current.order.version,
+			actorUserId,
+			now: Date.now(),
+		});
+		if (!changed) {
+			const latest = await this.repository.getCmsOrder(orderNumber);
+			if (latest?.order.status === "delivered") return toDetail(latest);
+			throw new ApiError("CONFLICT", "Order changed; reload and retry");
+		}
+		const updated = await this.repository.getCmsOrder(orderNumber);
+		if (!updated) throw new Error("Delivered order could not be loaded");
+		return toDetail(updated);
+	}
 
 	async checkout(owner: CustomerPrincipal, payload: unknown, idempotencyKey: string): Promise<{ order: OrderDetail; replayed: boolean }> {
 		const input = validate(checkoutInputSchema, payload, "Checkout is invalid");
