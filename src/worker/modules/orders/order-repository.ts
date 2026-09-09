@@ -93,6 +93,17 @@ export type StoredOrderDetail = {
 	history: StoredStatusHistory[];
 };
 
+type StoredDeliveryProof = {
+	order_id: string;
+	token_hash: string;
+	pin_hash: string;
+	token_enc: string;
+	pin_enc: string;
+	expires_at: number;
+	consumed_at: number | null;
+	created_at: number;
+};
+
 type StoredIdempotency = { request_hash: string; order_id: string };
 type StockForCancellation = { offering_id: string; quantity: number; stock_quantity: number; version: number };
 type ReorderSnapshotLine = StoredOrderItem & {
@@ -113,6 +124,27 @@ type CheckoutCommit = {
 	lines: StoredCheckoutLine[];
 	requestHash: string;
 	idempotencyKey: string;
+};
+
+type TransitionCommit = {
+	orderId: string;
+	currentStatus: StoredOrder["status"];
+	expectedVersion: number;
+	toStatus: StoredOrder["status"];
+	reason: string | null;
+	actorUserId: string | null;
+	expectedDeliveryAt: number | null;
+	now: number;
+	stock: StockForCancellation[] | null;
+	proof?: {
+		orderId: string;
+		tokenHash: string;
+		pinHash: string;
+		tokenEnc: string;
+		pinEnc: string;
+		expiresAt: number;
+		createdAt: number;
+	};
 };
 
 function ownerWhere(owner: CustomerPrincipal, alias = "o") {
@@ -239,6 +271,20 @@ export class OrderRepository {
 			 FROM commerce_order o WHERE o.order_number = ? AND ${ownerWhere(owner)}`,
 		).bind(orderNumber, ownerBinding(owner)).first<StoredOrder>();
 		if (!order) return null;
+		return this.assembleDetail(order);
+	}
+
+	async getCmsOrder(orderNumber: string): Promise<StoredOrderDetail | null> {
+		const order = await this.database.prepare(
+			`SELECT id, order_number, status, payment_status, currency, subtotal_minor, delivery_fee_minor, total_minor, placed_at, expected_delivery_at, cancelled_at, version,
+			 (SELECT COALESCE(sum(quantity), 0) FROM order_item i WHERE i.order_id = o.id) AS item_count
+			 FROM commerce_order o WHERE o.order_number = ?`,
+		).bind(orderNumber).first<StoredOrder>();
+		if (!order) return null;
+		return this.assembleDetail(order);
+	}
+
+	private async assembleDetail(order: StoredOrder): Promise<StoredOrderDetail> {
 		const [address, items, history] = await this.database.batch([
 			this.database.prepare("SELECT order_id, recipient_name, mobile, address_line_1, address_line_2, landmark, city, state, postal_code, latitude, longitude, delivery_instructions FROM order_address WHERE order_id = ?").bind(order.id),
 			this.database.prepare("SELECT offering_id, product_id, product_code, product_name, offering_sku, offering_label, pack_quantity, weight_value, weight_unit, list_price_minor, discount_type, discount_value, effective_unit_price_minor, quantity, line_total_minor FROM order_item WHERE order_id = ? ORDER BY offering_id").bind(order.id),
@@ -269,6 +315,27 @@ export class OrderRepository {
 		return { items: items.results as StoredOrder[], totalItems: Number((count.results[0] as { total?: number } | undefined)?.total ?? 0) };
 	}
 
+	async listCmsOrders(query: { page: number; pageSize: number; status?: string; search?: string }): Promise<{ items: StoredOrder[]; totalItems: number }> {
+		const clauses: string[] = [];
+		const binds: unknown[] = [];
+		if (query.status) { clauses.push("o.status = ?"); binds.push(query.status); }
+		if (query.search) {
+			clauses.push("(o.order_number LIKE ? OR EXISTS (SELECT 1 FROM order_address a WHERE a.order_id = o.id AND (a.recipient_name LIKE ? OR a.mobile LIKE ?)))");
+			const term = `%${query.search}%`;
+			binds.push(term, term, term);
+		}
+		const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+		const [items, count] = await this.database.batch([
+			this.database.prepare(
+				`SELECT id, order_number, status, payment_status, currency, subtotal_minor, delivery_fee_minor, total_minor, placed_at, expected_delivery_at, cancelled_at, version,
+				 (SELECT COALESCE(sum(quantity), 0) FROM order_item i WHERE i.order_id = o.id) AS item_count
+				 FROM commerce_order o ${where} ORDER BY o.placed_at DESC, o.id DESC LIMIT ? OFFSET ?`,
+			).bind(...binds, query.pageSize, (query.page - 1) * query.pageSize),
+			this.database.prepare(`SELECT count(*) AS total FROM commerce_order o ${where}`).bind(...binds),
+		]);
+		return { items: items.results as StoredOrder[], totalItems: Number((count.results[0] as { total?: number } | undefined)?.total ?? 0) };
+	}
+
 	async cancellationStock(orderId: string): Promise<StockForCancellation[]> {
 		const result = await this.database.prepare(
 			"SELECT i.offering_id, i.quantity, o.stock_quantity, o.version FROM order_item i JOIN offering o ON o.id = i.offering_id WHERE i.order_id = ? ORDER BY i.offering_id",
@@ -288,18 +355,82 @@ export class OrderRepository {
 				 UPDATE commerce_order AS o SET status = CASE WHEN (SELECT ok FROM valid) = 1 THEN 'cancelled' ELSE 'invalid' END,
 				 cancelled_at = ?, version = version + 1, updated_at = ? WHERE ${orderGuard}`,
 			).bind(...bindings, now, now, ownerBinding(owner), detail.order.id, expectedVersion),
-			...stock.map((line) => this.database.prepare(
-				"UPDATE offering SET stock_quantity = stock_quantity + ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND stock_quantity = ? AND EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'cancelled' AND version = ?)",
-			).bind(line.quantity, now, line.offering_id, line.version, line.stock_quantity, detail.order.id, expectedVersion + 1)),
-			...stock.map((line) => this.database.prepare(
-				"INSERT INTO inventory_movement (id, offering_id, previous_quantity, quantity_delta, resulting_quantity, reason, movement_type, actor_user_id, order_id, offering_version, created_at) SELECT ?, ?, ?, ?, ?, ?, 'cancellation_restoration', ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'cancelled' AND version = ?)",
-			).bind(crypto.randomUUID(), line.offering_id, line.stock_quantity, line.quantity, line.stock_quantity + line.quantity, reason, owner.kind === "user" ? owner.id : null, detail.order.id, line.version + 1, now, detail.order.id, expectedVersion + 1)),
+			...this.restorationStatements(stock, detail.order.id, expectedVersion + 1, reason, owner.kind === "user" ? owner.id : null, now),
 			this.database.prepare(
 				"INSERT INTO order_status_history (id, order_id, from_status, to_status, reason, actor_user_id, metadata, created_at) SELECT ?, ?, ?, 'cancelled', ?, ?, NULL, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'cancelled' AND version = ?)",
 			).bind(crypto.randomUUID(), detail.order.id, detail.order.status, reason, owner.kind === "user" ? owner.id : null, now, detail.order.id, expectedVersion + 1),
 		];
 		const result = await this.database.batch(statements);
 		return result[0]?.meta.changes === 1;
+	}
+
+	private restorationStatements(stock: StockForCancellation[], orderId: string, newVersion: number, reason: string, actorUserId: string | null, now: number): D1PreparedStatement[] {
+		return stock.flatMap((line) => [
+			this.database.prepare(
+				"UPDATE offering SET stock_quantity = stock_quantity + ?, version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND stock_quantity = ? AND EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status IN ('cancelled','rejected') AND version = ?)",
+			).bind(line.quantity, now, line.offering_id, line.version, line.stock_quantity, orderId, newVersion),
+			this.database.prepare(
+				"INSERT INTO inventory_movement (id, offering_id, previous_quantity, quantity_delta, resulting_quantity, reason, movement_type, actor_user_id, order_id, offering_version, created_at) SELECT ?, ?, ?, ?, ?, ?, 'cancellation_restoration', ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status IN ('cancelled','rejected') AND version = ?)",
+			).bind(crypto.randomUUID(), line.offering_id, line.stock_quantity, line.quantity, line.stock_quantity + line.quantity, reason, actorUserId, orderId, line.version + 1, now, orderId, newVersion),
+		]);
+	}
+
+	async transitionOrder(value: TransitionCommit): Promise<boolean> {
+		const newVersion = value.expectedVersion + 1;
+		const cancelledAt = value.toStatus === "cancelled" || value.toStatus === "rejected" ? value.now : null;
+		const statements: D1PreparedStatement[] = [
+			this.database.prepare(
+				`UPDATE commerce_order SET
+				 status = ?,
+				 expected_delivery_at = CASE WHEN ? = 'confirmed' THEN ? ELSE expected_delivery_at END,
+				 cancelled_at = CASE WHEN ? IN ('cancelled','rejected') THEN ? ELSE cancelled_at END,
+				 version = version + 1,
+				 updated_at = ?
+				 WHERE id = ? AND version = ? AND status = ?`,
+			).bind(value.toStatus, value.toStatus, value.expectedDeliveryAt, value.toStatus, cancelledAt, value.now, value.orderId, value.expectedVersion, value.currentStatus),
+			this.database.prepare(
+				"INSERT INTO order_status_history (id, order_id, from_status, to_status, reason, actor_user_id, metadata, created_at) SELECT ?, ?, ?, ?, ?, ?, NULL, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = ? AND version = ?)",
+			).bind(crypto.randomUUID(), value.orderId, value.currentStatus, value.toStatus, value.reason, value.actorUserId, value.now, value.orderId, value.toStatus, newVersion),
+		];
+		if (value.stock && (value.toStatus === "cancelled" || value.toStatus === "rejected")) {
+			statements.push(...this.restorationStatements(value.stock, value.orderId, newVersion, value.reason ?? "", value.actorUserId, value.now));
+		}
+		if (value.proof && value.toStatus === "out_for_delivery") {
+			statements.push(this.database.prepare(
+				"INSERT INTO delivery_proof (order_id, token_hash, pin_hash, token_enc, pin_enc, expires_at, consumed_at, created_at) SELECT ?, ?, ?, ?, ?, ?, NULL, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'out_for_delivery' AND version = ?)",
+			).bind(value.proof.orderId, value.proof.tokenHash, value.proof.pinHash, value.proof.tokenEnc, value.proof.pinEnc, value.proof.expiresAt, value.proof.createdAt, value.orderId, newVersion));
+		}
+		statements.push(this.database.prepare(
+			"INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, metadata, created_at) SELECT ?, ?, 'order.transition', 'order', ?, ?, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND version = ?)",
+		).bind(crypto.randomUUID(), value.actorUserId, value.orderId, JSON.stringify({ from: value.currentStatus, to: value.toStatus }), value.now, value.orderId, newVersion));
+		const result = await this.database.batch(statements);
+		return result[0]?.meta.changes === 1;
+	}
+
+	async completeDelivery(value: { orderId: string; expectedVersion: number; actorUserId: string | null; now: number }): Promise<boolean> {
+		const newVersion = value.expectedVersion + 1;
+		const statements: D1PreparedStatement[] = [
+			this.database.prepare(
+				"UPDATE commerce_order SET status = 'delivered', payment_status = 'collected', version = version + 1, updated_at = ? WHERE id = ? AND version = ? AND status = 'out_for_delivery'",
+			).bind(value.now, value.orderId, value.expectedVersion),
+			this.database.prepare(
+				"UPDATE delivery_proof SET consumed_at = ? WHERE order_id = ? AND EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'delivered' AND version = ?)",
+			).bind(value.now, value.orderId, value.orderId, newVersion),
+			this.database.prepare(
+				"INSERT INTO order_status_history (id, order_id, from_status, to_status, reason, actor_user_id, metadata, created_at) SELECT ?, ?, 'out_for_delivery', 'delivered', 'Delivery proof verified', ?, NULL, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND status = 'delivered' AND version = ?)",
+			).bind(crypto.randomUUID(), value.orderId, value.actorUserId, value.now, value.orderId, newVersion),
+			this.database.prepare(
+				"INSERT INTO audit_log (id, actor_user_id, action, entity_type, entity_id, metadata, created_at) SELECT ?, ?, 'delivery.completed', 'order', ?, ?, ? WHERE EXISTS (SELECT 1 FROM commerce_order WHERE id = ? AND version = ?)",
+			).bind(crypto.randomUUID(), value.actorUserId, value.orderId, JSON.stringify({ payment: "collected" }), value.now, value.orderId, newVersion),
+		];
+		const result = await this.database.batch(statements);
+		return result[0]?.meta.changes === 1;
+	}
+
+	async getDeliveryProof(orderId: string): Promise<StoredDeliveryProof | null> {
+		return this.database.prepare(
+			"SELECT order_id, token_hash, pin_hash, token_enc, pin_enc, expires_at, consumed_at, created_at FROM delivery_proof WHERE order_id = ?",
+		).bind(orderId).first<StoredDeliveryProof>();
 	}
 
 	async reorderSnapshot(owner: CustomerPrincipal, orderId: string): Promise<ReorderSnapshotLine[]> {
