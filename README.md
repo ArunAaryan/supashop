@@ -2,9 +2,9 @@
 
 Supashop is a single-store delivery application built with React, Hono, Cloudflare Workers, D1, and R2. Each deployed instance represents exactly one physical store or warehouse. It has no organizations, tenants, or multi-store administration.
 
-## Phase 1–4 status
+## Phase 1–5 status
 
-Phases 1 through 4 establish the application, catalog, storefront, cart, and ordering foundation:
+Phases 1 through 5 establish the application, catalog, storefront, cart, ordering, and fulfilment foundation:
 
 - Better Auth email/password registration and sign-in, plus signed guest browser sessions.
 - Server-enforced CMS roles (`owner`, `admin`, `operations`, and `delivery`) and role-aware React shells.
@@ -21,8 +21,13 @@ Phases 1 through 4 establish the application, catalog, storefront, cart, and ord
 - Immutable order snapshots (items, prices, and address), customer order history, and guest order access scoped to the originating browser session.
 - Customer cancellation while an order is `placed` or `confirmed`, with exactly-once stock restoration.
 - Reorder of previously purchased items with per-line availability handling.
+- A CMS order queue with search and status filtering, acknowledgement with an expected delivery time, and the `placed → confirmed → preparing → ready → out_for_delivery → delivered` fulfilment flow with valid, reason-gated transitions.
+- CMS cancellation and rejection of undelivered orders, restoring stock exactly once.
+- One-time, expiring delivery proof: the customer sees an opaque QR token and six-digit PIN while the order is `out_for_delivery`; delivery staff verify it to mark the order delivered and COD collected.
+- A delivery-role mobile queue for completing drop-offs.
+- An immutable operational audit trail recording every order transition and delivery completion.
 
-Delivery proof (QR/PIN), the CMS order queue and fulfilment workflow, and analytics remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
+Dashboard analytics, low-stock reporting, accessibility/security hardening, and end-to-end coverage remain future phases. The product direction is cash on delivery only; it does not include online payments or live delivery/GPS tracking.
 
 ## Requirements
 
