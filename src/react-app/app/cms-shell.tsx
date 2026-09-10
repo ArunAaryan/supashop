@@ -20,7 +20,7 @@ export function CmsShell({ children, role }: PropsWithChildren<{ role: CmsRole }
 			<div className="min-h-screen min-w-0 bg-canvas">
 				<nav aria-label="Delivery navigation" className="flex min-h-16 min-w-0 items-center justify-between gap-3 bg-ink px-4 text-surface sm:px-7">
 					<NavLink className="min-w-0 truncate font-medium tracking-tight" to="/cms">SUPASHOP · DELIVERY</NavLink>
-					<NavLink className="shrink-0 rounded-full bg-action px-4 py-2 text-sm font-medium text-ink" to="/cms">My deliveries</NavLink>
+					<NavLink className="shrink-0 rounded-full bg-action px-4 py-2 text-sm font-medium text-ink" to="/cms/deliver">My deliveries</NavLink>
 				</nav>
 				<main className="mx-auto max-w-3xl p-4 sm:p-7">{children}</main>
 			</div>

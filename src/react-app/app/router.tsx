@@ -16,6 +16,9 @@ import { StoreSettingsPage } from "../features/store/store-settings-page";
 import { CartPage } from "../features/cart/cart-page";
 import { CheckoutPage } from "../features/checkout/checkout-page";
 import { AccountPage } from "../features/orders/account-page";
+import { CmsOrderDetail } from "../features/orders/cms-order-detail";
+import { CmsOrdersPage } from "../features/orders/cms-orders-page";
+import { DeliveryOrdersPage } from "../features/orders/delivery-orders";
 import { OrderDetailPage } from "../features/orders/order-detail-page";
 import { OrdersPage } from "../features/orders/orders-page";
 import { ShopHomePage } from "../features/shop/shop-home-page";
@@ -45,6 +48,11 @@ function ShopProductRoute() {
 function OrderDetailRoute() {
 	const { orderNumber } = useParams();
 	return orderNumber ? <OrderDetailPage orderNumber={orderNumber} /> : <Navigate replace to="/orders" />;
+}
+
+function CmsOrderDetailRoute() {
+	const { orderNumber } = useParams();
+	return orderNumber ? <CmsOrderDetail orderNumber={orderNumber} /> : <Navigate replace to="/cms/orders" />;
 }
 
 function CmsArea() {
@@ -92,7 +100,9 @@ export const router = createBrowserRouter([
 			{ path: "/cms/offerings", element: <OfferingsPage /> },
 			{ path: "/cms/offerings/new", element: <OfferingForm mode="create" /> },
 			{ path: "/cms/offerings/:offeringId", element: <OfferingForm mode="edit" /> },
-			{ path: "/cms/orders", element: <PhasePage title="Order operations are staged." description="The live order queue will arrive in the next CMS phase." /> },
+			{ path: "/cms/orders", element: <CmsOrdersPage /> },
+			{ path: "/cms/orders/:orderNumber", element: <CmsOrderDetailRoute /> },
+			{ path: "/cms/deliver", element: <DeliveryOrdersPage /> },
 			{ path: "/cms/inventory", element: <InventoryMovementsPage /> },
 			{ path: "/cms/settings/store", element: <StoreSettingsGate><StoreSettingsPage /></StoreSettingsGate> },
 		],
