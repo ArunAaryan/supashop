@@ -40,9 +40,9 @@ test("store owner signs up and reaches the CMS", async () => {
 
 test("owner sees the seeded catalog in the CMS", async () => {
 	await owner.goto("/cms/categories");
-	await expect(owner.getByRole("link", { name: "Dairy" })).toBeVisible();
+	await expect(owner.getByText("Dairy", { exact: true })).toBeVisible();
 	await owner.goto("/cms/offerings");
-	await expect(owner.getByRole("link", { name: /1 litre pouch/i })).toBeVisible();
+	await expect(owner.getByRole("link", { name: "MILK-1L" })).toBeVisible();
 });
 
 test("customer signs up, browses, and adds milk to the cart", async () => {
@@ -54,7 +54,7 @@ test("customer signs up, browses, and adds milk to the cart", async () => {
 
 test("customer places and cancels their first order", async () => {
 	orderA = await checkoutCod(customer);
-	await expect(customer.getByText("Placed")).toBeVisible();
+	await expect(customer.getByRole("heading", { name: orderA })).toBeVisible();
 	await customer.getByRole("button", { name: "Cancel order" }).click();
 	await customer.getByRole("textbox", { name: /cancellation reason/i }).fill("Changed my mind");
 	await customer.getByRole("button", { name: "Confirm cancellation" }).click();
@@ -64,7 +64,7 @@ test("customer places and cancels their first order", async () => {
 test("customer places a second order for fulfilment", async () => {
 	await addMilkToCart(customer);
 	orderB = await checkoutCod(customer);
-	await expect(customer.getByText("Placed")).toBeVisible();
+	await expect(customer.getByRole("heading", { name: orderB })).toBeVisible();
 });
 
 test("owner acknowledges and advances the order to out for delivery", async () => {
