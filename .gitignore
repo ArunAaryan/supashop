@@ -204,3 +204,7 @@ dist
 
 # Local pnpm store (never commit)
 .pnpm-store/
+
+# Playwright
+/test-results/
+/playwright-report/
