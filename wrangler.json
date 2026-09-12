@@ -11,8 +11,8 @@
 		"nodejs_compat"
 	],
 	"vars": {
-		"BETTER_AUTH_URL": "http://localhost:5173",
-		"APP_ENV": "development"
+		"BETTER_AUTH_URL": "https://supashop.rnyadav98.workers.dev",
+		"APP_ENV": "production"
 	},
 	"observability": {
 		"enabled": true
@@ -26,14 +26,8 @@
 		{
 			"binding": "DB",
 			"database_name": "supashop-db",
-			"database_id": "00000000-0000-0000-0000-000000000001",
+			"database_id": "79b90bf6-5120-4258-a668-0188de7ed645",
 			"migrations_dir": "./drizzle"
-		}
-	],
-	"r2_buckets": [
-		{
-			"binding": "MEDIA",
-			"bucket_name": "supashop-media"
 		}
 	]
 	/**
