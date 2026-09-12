@@ -21,7 +21,6 @@ export function LoginGate({ children }: PropsWithChildren) {
 	if (isPending) return <SessionLoading />;
 	if (data?.cmsRole) return <Navigate replace to="/cms" />;
 	if (data?.user) return <Navigate replace to="/shop" />;
-	if (data?.guest) return <Navigate replace to="/shop" />;
 	return <>{children}</>;
 }
 

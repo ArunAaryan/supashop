@@ -57,7 +57,13 @@ export async function addMilkToCart(page: Page) {
 	await expect(page.getByRole("button", { name: "Add to cart" })).toBeEnabled();
 }
 
-export async function checkoutCod(page: Page) {
+export async function addProductToCart(page: Page, slug: string) {
+	await page.goto(`/products/${slug}`);
+	await page.getByRole("button", { name: "Add to cart" }).click();
+	await expect(page.getByRole("button", { name: "Add to cart" })).toBeEnabled();
+}
+
+export async function checkoutCod(page: Page, saveAddress = false) {
 	await page.goto("/checkout");
 	await page.getByLabel("Recipient name").fill("Asha Patel");
 	await page.getByLabel("Mobile number").fill("+919876543210");
@@ -65,6 +71,7 @@ export async function checkoutCod(page: Page) {
 	await page.getByLabel("City").fill("Bengaluru");
 	await page.getByLabel("State").fill("Karnataka");
 	await page.getByLabel("Postal code").fill("560001");
+	if (saveAddress) await page.getByRole("checkbox", { name: "Save this address to my account" }).check();
 	await page.getByRole("button", { name: "Place COD order" }).click();
 	await page.waitForURL(/\/orders\//);
 	return page.url().split("/orders/")[1] as string;

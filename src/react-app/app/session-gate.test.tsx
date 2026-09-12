@@ -112,7 +112,7 @@ describe("login gate", () => {
 		expect(await screen.findByText("CMS destination")).toBeInTheDocument();
 	});
 
-	it("routes a returning guest away from login without creating another guest session", async () => {
+	it("lets a returning guest reach the login form to sign in and merge their cart", async () => {
 		mockSession({ user: null, cmsRole: null, guest: true });
 		render(
 			<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -124,6 +124,6 @@ describe("login gate", () => {
 				</MemoryRouter>
 			</QueryClientProvider>,
 		);
-		expect(await screen.findByText("Shop destination")).toBeInTheDocument();
+		expect(await screen.findByText("Login form")).toBeInTheDocument();
 	});
 });
