@@ -9,7 +9,7 @@ export default defineConfig({
 			const migrations = await readD1Migrations(path.join(__dirname, "drizzle"));
 
 			return {
-				wrangler: { configPath: "./wrangler.json" },
+				wrangler: { configPath: "./wrangler.test.json" },
 				miniflare: {
 					bindings: {
 						APP_ENV: "test",

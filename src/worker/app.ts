@@ -17,6 +17,7 @@ import { createPublicCatalogRoutes } from "./modules/catalog/public-routes";
 import { createStoreRoutes } from "./modules/store/store-routes";
 import { createOrderRoutes } from "./modules/orders/order-routes";
 import { createAuditRoutes } from "./modules/audit/audit-routes";
+import { createAnalyticsRoutes } from "./modules/analytics/analytics-routes";
 
 export function createApp() {
 	const app = new Hono<AppEnv>();
@@ -39,6 +40,7 @@ export function createApp() {
 	app.route("/api", createCartRoutes());
 	app.route("/api", createOrderRoutes());
 	app.route("/api", createAuditRoutes());
+	app.route("/api", createAnalyticsRoutes());
 	app.route("/api", createCatalogRoutes());
 	app.route("/api", createStoreRoutes());
 	app.get("/api/session", (c) =>

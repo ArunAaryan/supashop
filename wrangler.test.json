@@ -7,23 +7,21 @@
 		"nodejs_compat"
 	],
 	"vars": {
-		"BETTER_AUTH_URL": "https://supashop.rnyadav98.workers.dev",
-		"APP_ENV": "production"
-	},
-	"observability": {
-		"enabled": true
-	},
-	"upload_source_maps": true,
-	"assets": {
-		"directory": "./dist/client",
-		"not_found_handling": "single-page-application"
+		"BETTER_AUTH_URL": "http://localhost:5173",
+		"APP_ENV": "development"
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "supashop-db",
-			"database_id": "79b90bf6-5120-4258-a668-0188de7ed645",
+			"database_id": "00000000-0000-0000-0000-000000000001",
 			"migrations_dir": "./drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "supashop-media"
 		}
 	]
 }

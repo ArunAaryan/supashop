@@ -24,16 +24,12 @@ import { OrdersPage } from "../features/orders/orders-page";
 import { ShopHomePage } from "../features/shop/shop-home-page";
 import { ShopProductPage } from "../features/shop/shop-product-page";
 import { ShopSearchPage } from "../features/shop/shop-search-page";
+import { DashboardPage } from "../features/analytics/dashboard-page";
 import { guestSessionResponseSchema } from "../../shared/contracts/guest";
 
-function PhasePage({ title, description }: { title: string; description: string }) {
-	return (
-		<section className="rounded-card border border-white/70 bg-surface p-6 shadow-float sm:p-9">
-			<p className="text-xs font-medium uppercase tracking-[0.16em] text-action">Phase one</p>
-			<h1 className="mt-3 text-3xl font-medium tracking-tight">{title}</h1>
-			<p className="mt-3 max-w-xl text-sm leading-6 text-muted">{description}</p>
-		</section>
-	);
+function CmsHome() {
+	const { data } = useSession();
+	return data?.cmsRole === "delivery" ? <Navigate replace to="/cms/deliver" /> : <DashboardPage />;
 }
 
 function CustomerArea() {
@@ -91,7 +87,7 @@ export const router = createBrowserRouter([
 	{
 		element: <CmsArea />,
 		children: [
-			{ path: "/cms", element: <PhasePage title="Operations dashboard arriving soon." description="Orders, inventory, and daily delivery work will appear here in the next CMS phase." /> },
+			{ path: "/cms", element: <CmsHome /> },
 			{ path: "/cms/products", element: <ProductsPage /> },
 			{ path: "/cms/products/new", element: <ProductForm mode="create" /> },
 			{ path: "/cms/products/:productId", element: <ProductForm mode="edit" /> },
